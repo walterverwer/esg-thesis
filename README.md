@@ -1,1 +1,1 @@
-# esg-thesis
+# ESG Thesis
