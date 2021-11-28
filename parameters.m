@@ -1,0 +1,10 @@
+r = 0.046;          % discounting
+sigma_G = 0.20;     % volatility of green capital
+sigma_B = 0.26;     % volatility of brown capital
+A_G = 0.15;         % productivity of green capital
+A_B = 0.2;          % productivity of brown capital
+%gamma = 0.05;       % the agent's discount rate
+delta = 0.125;      % depretiation rate
+theta = 2;          % capital adjustment cost
+%lambda = 0.2;       % private benefit of shirking
+%l = 0.97;           % liquidation value
