@@ -13,13 +13,14 @@ bc = @(ya, yb) bc_fb(ya, yb, p_B, p_G);
 
 
 % obtain init
-xmesh = linspace(0,1,1000);
+lmd = 0;
+xmesh = linspace(0+lmd,1-lmd,100);
 y0_guess = [p_B;0]; % start is known, V' is unknown. Guess whole line
 guessFun = @(z) guess(z,y0_guess,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=10000,AbsTol=1e-3,RelTol=1e-3);
-fb = bvp4c(ode,bc,solinit,bvpoptions);
+fb = bvp5c(ode,bc,solinit,bvpoptions);
 found_y = fb.y(:,1);
 
 options = odeset(RelTol=1e-4,AbsTol=1e-4,Events=@isOptim);
