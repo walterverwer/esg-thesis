@@ -2,6 +2,12 @@ function dy = ode_v_fb(z,y,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta)
 %ODE_V_FB Function to solve for the ODE of the first best value of V
 %   write the second order ODE as a system of first-order equations. Define
 %   y(1) := V(z) and y(2) := V'(z)
+if z<1e-1
+    z=1e-1;
+elseif z>1-1e-1
+    z=1-1e-1;
+end
+
 
 i_G = 1/theta*( 1- 1/(y(1)-z*y(2)) ); % optimal i_G
 i_B = 1/theta*( 1-1/(y(1)+(1-z)*y(2)) ); % optimal i_B

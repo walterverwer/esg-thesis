@@ -1,8 +1,8 @@
 r = 0.046;          % discounting
 sigma_G = 0.26;     % volatility of green capital
 sigma_B = 0.26;     % volatility of brown capital
-A_G = .45;         % productivity of green capital
-A_B = .45;          % productivity of brown capital
+A_G = .1;         % productivity of green capital
+A_B = .1;          % productivity of brown capital
 %gamma = 0.05;       % the agent's discount rate
 delta = 0.3;      % depretiation rate
 theta = 2;          % capital adjustment cost
