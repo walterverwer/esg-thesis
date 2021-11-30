@@ -1,14 +1,36 @@
-function df = ode_v_fb(z,f,r,sigma_G, sigma, B ,A_G, A_B ,delta,theta)
+function dy = ode_v_fb(z,y,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta)
 %ODE_V_FB Function to solve for the ODE of the first best value of V
 %   write the second order ODE as a system of first-order equations. Define
-%   f(1) := V(z) and f(2) := V'(z)
+%   y(1) := V(z) and y(2) := V'(z)
+% if z<1e-1
+%     z=1e-1;
+% elseif z>1-1e-1
+%     z=1-1e-1;
+% end
 
-i_G = 1/theta*(f(1)-z*f(2)-1); % optimal i_G
-i_B = 1/theta*(f(1)+(1-z)*f(2)-1); % optimal i_B
 
-df = zeros(2,1);    % a column vector; f(1)=p(w) and f(2)=p'(w)
-df(1) = f(2);
-df(2) = 2/(sigma_G^2+sigma_B^2);
+i_G = 1/theta*( 1- 1/(y(1)-z*y(2)) ); % optimal i_G
+i_B = 1/theta*( 1-1/(y(1)+(1-z)*y(2)) ); % optimal i_B
+
+dy = zeros(2,1);  
+dy(1) = y(2);
+
+
+if z<0.2
+    dy(2) = ( 32/(sigma_B^2+sigma_G^2) + 256*(z-0.5)^2/(sigma_B^2+sigma_G^2) + 1536*(z-0.5)^4/(sigma_B^2+sigma_G^2) ) * ( r*y(1) - (1-z)*(A_B-i_B) ...
+        - z*(A_G-i_G) - (1-z)*(y(1) - z*y(2))*(i_B - theta/2*i_B^2 - delta ) ...
+        - z*(y(1) + (1-z)*y(2))*(i_G - theta/2*i_G^2 - delta) )  ;
+
+elseif z>0.8
+    dy(2) = ( 32/(sigma_B^2+sigma_G^2) + 256*(z-0.5)^2/(sigma_B^2+sigma_G^2) + 1536*(z-0.5)^4/(sigma_B^2+sigma_G^2) ) * ( r*y(1) - (1-z)*(A_B-i_B) ...
+    - z*(A_G-i_G) - (1-z)*(y(1) - z*y(2))*(i_B - theta/2*i_B^2 - delta ) ...
+    - z*(y(1) + (1-z)*y(2))*(i_G - theta/2*i_G^2 - delta) )  ;
+
+else
+    dy(2) = 2/((sigma_B^2+sigma_G^2)*z^2*(1-z)^2) * ( r*y(1) - (1-z)*(A_B-i_B) ...
+    - z*(A_G-i_G) - (1-z)*(y(1) - z*y(2))*(i_B - theta/2*i_B^2 - delta ) ...
+    - z*(y(1) + (1-z)*y(2))*(i_G - theta/2*i_G^2 - delta) )  ;
+end
 
 end
 

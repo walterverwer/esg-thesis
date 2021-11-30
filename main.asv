@@ -1,50 +1,48 @@
 clear all, close all
 
-%% Basic parameters
-parameters;
-options = odeset('RelTol',1e-8,'AbsTol',1e-8, 'MassSingular','yes');
-
-%% HJB fb
-
-%y0 = ones(2,1);
-
-% Return the function V(z) and plot it, THIS IS INCORRECT! This is an
-% initial value problem, I need to do 2 boundary problem!
-[p_B, p_G] = obtain_boundary_values(r, A_G, A_B ,delta,theta);
-[z,Vz] = ode45(@ode_v_fb ,[0 1], [p_B 1], options, r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
-
-plot(z,Vz(:,1));
-
-
-
-
 %% Boundary value problem solver:
+[sol,p_B,p_G,i_B,i_G] = bv_solver();
+
+% Plot results
+plot(sol.x,sol.y(1,:))
+legend(sprintf('A_B=A_G=%.1f',A_B)
+grid on
+
+%% Plotting: plot for different As
 parameters;
 
-%S = [0 0; 0 2/(sigma_G^2+sigma_B^2)];
-%options = bvpset('SingularTerm',S);
+% Baseline: equal A
+AB1 = A_B;
+AG1 = A_G;
+[sol1,~,~,~,~] = bv_solver(AB1, AG1);
 
-[p_B,p_G,i_B,i_G] = obtain_boundary_values(r, A_G, A_B ,delta,theta);
+% A_B>A_G
+AB2 = 0.45;
+AG2 = 0.35;
+[sol2,~,~,~,~] = bv_solver(AB2, AG2);
 
-ode = @(z,y) ode_v_fb(z,y,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
-bc = @(ya, yb) bc_fb(ya, yb, p_B, p_G);
-
-
-% obtain init
-xmesh = linspace(0,1,100);
-y0_guess = [p_B;0]; % start is known, V' is unknown. Guess whole line
-guessFun = @(z) guess(z,y0_guess,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
-solinit = bvpinit(xmesh, guessFun);
-
-
-fb = bvp4c(ode,bc,solinit);
-found_y = fb.y(:,1);
-
-options = odeset(RelTol=1e-12,AbsTol=1e-12,Events=@isOptim);
-sol = ode45(ode, [0 1], found_y, options);
+% A_B<A_G
+AB3 = 0.35;
+AG3 = 0.45;
+[sol3,~,~,~,~] = bv_solver(AB3, AG3);
 
 
-plot(sol.x, fb.y(1,:))
+plot(sol1.x,sol1.y(1,:))
+hold on
+plot(sol2.x,sol2.y(1,:))
+hold on
+plot(sol3.x,sol3.y(1,:))
+legend(sprintf('A_B=A_G=%.2f',AB1), sprintf('A_B=%.2f & A_G=%.2f',AB2, AG2), sprintf('A_B=%.2f & A_G=%.2f',AB3,AG3),'Location','southeast')
+grid on
+saveas(gcf,'fb_comparison','eps')
+
+
+
+
+
+
+
+
 
 
 

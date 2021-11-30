@@ -2,40 +2,54 @@ clear all, close all
 
 %% Boundary value problem solver:
 parameters;
+[sol,p_B,p_G,i_B,i_G] = bv_solver(A_B,A_G);
 
-%S = [0 0; 0 2/(sigma_G^2+sigma_B^2)];
-%options = bvpset('SingularTerm',S);
-
-[p_B,p_G,i_B,i_G] = obtain_boundary_values(r, A_G, A_B ,delta,theta);
-
-ode = @(z,y) ode_v_fb(z,y,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
-bc = @(ya, yb) bc_fb(ya, yb, p_B, p_G);
-
-
-% obtain init
-lmd = 0;
-xmesh = linspace(0+lmd,1-lmd,1000);
-y0_guess = [p_B;0]; % start is known, V' is unknown. Guess whole line
-guessFun = @(z) guess(z,y0_guess,r,sigma_G, sigma_B ,A_G, A_B ,delta,theta);
-solinit = bvpinit(xmesh, guessFun);
-
-bvpoptions = bvpset(Stats="on",Nmax=10000,AbsTol=1e-3,RelTol=1e-3);
-fb = bvp4c(ode,bc,solinit,bvpoptions);
-found_y = fb.y(:,1);
-
-options = odeset(RelTol=1e-4,AbsTol=1e-4,Events=@isOptim);
-sol = ode45(ode, [0 1], found_y, options);
-
-%% Plotting
-
-
-plot(fb.x,fb.y(1,:))
-hold on
-%plot(sol.x,sol.y(1,:))
+% Plot results
+plot(sol.x,sol.y(1,:))
+legend(sprintf('A_B=A_G=%.1f',A_B),'Location','southeast')
 grid on
+saveas(gca,'fb.eps','epsc')
+
+%% Plotting: plot for different As
+parameters;
+
+% Baseline: equal A
+AB1 = A_B;
+AG1 = A_G;
+[sol1,~,~,~,~] = bv_solver(AB1, AG1);
+
+% A_B>A_G
+AB2 = 0.45;
+AG2 = 0.35;
+[sol2,~,~,~,~] = bv_solver(AB2, AG2);
+
+% A_B<A_G
+AB3 = 0.35;
+AG3 = 0.45;
+[sol3,~,~,~,~] = bv_solver(AB3, AG3);
 
 
-%%
+plot(sol1.x,sol1.y(1,:))
+hold on
+plot(sol2.x,sol2.y(1,:))
+hold on
+plot(sol3.x,sol3.y(1,:))
+legend(sprintf('A_B=A_G=%.2f',AB1), sprintf('A_B=%.2f & A_G=%.2f',AB2, AG2), sprintf('A_B=%.2f & A_G=%.2f',AB3,AG3),'Location','southeast')
+grid on
+saveas(gca,'fb_comparison.eps','epsc')
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
