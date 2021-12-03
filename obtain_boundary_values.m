@@ -3,12 +3,12 @@ function [p_B,p_G,i_B,i_G] = obtain_boundary_values(r, A_G, A_B ,delta,theta)
 %   Detailed explanation goes here
 
 % Check:
-if  A_B^2 + 2*(delta + r - A_B)/theta < 0
+if  (A_B^2 + 2*(delta + r - A_B)/theta) < 0
     error('Investment not defined!')
     return
 end
 
-if  A_G^2 + 2*(delta + r - A_G)/theta < 0
+if  (A_G^2 + 2*(delta + r - A_G)/theta) < 0
     error('Investment defined!')
     return
 end

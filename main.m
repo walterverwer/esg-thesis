@@ -6,7 +6,7 @@ parameters;
 
 % Plot results
 plot(sol.x,sol.y(1,:))
-legend(sprintf('A_B=A_G=%.1f',A_B),'Location','southeast')
+legend(sprintf('A_B=A_G=%.2f',A_B),'Location','southeast')
 grid on
 saveas(gca,'fb.eps','epsc')
 
@@ -37,7 +37,6 @@ plot(sol3.x,sol3.y(1,:))
 legend(sprintf('A_B=A_G=%.2f',AB1), sprintf('A_B=%.2f & A_G=%.2f',AB2, AG2), sprintf('A_B=%.2f & A_G=%.2f',AB3,AG3),'Location','southeast')
 grid on
 saveas(gca,'fb_comparison.eps','epsc')
-
 
 
 

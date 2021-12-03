@@ -1,12 +1,14 @@
 clear all, close all
 
 %% Boundary value problem solver:
-[sol,p_B,p_G,i_B,i_G] = bv_solver();
+parameters;
+[sol,p_B,p_G,i_B,i_G] = bv_solver(A_B,A_G);
 
 % Plot results
 plot(sol.x,sol.y(1,:))
-legend(sprintf('A_B=A_G=%.1f',A_B)
+legend(sprintf('A_B=A_G=%.1f',A_B),'Location','southeast')
 grid on
+saveas(gca,'fb.eps','epsc')
 
 %% Plotting: plot for different As
 parameters;
@@ -34,8 +36,12 @@ hold on
 plot(sol3.x,sol3.y(1,:))
 legend(sprintf('A_B=A_G=%.2f',AB1), sprintf('A_B=%.2f & A_G=%.2f',AB2, AG2), sprintf('A_B=%.2f & A_G=%.2f',AB3,AG3),'Location','southeast')
 grid on
-saveas(gcf,'fb_comparison','eps')
+saveas(gca,'fb_comparison.eps','epsc')
 
+%%
+
+syms z sigma_B sigma_G
+taylor( 2/( (sigma_B^2+sigma_G^2)*z^2*(1-z)^2 ), z, 0.5)
 
 
 
