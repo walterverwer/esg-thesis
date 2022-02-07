@@ -8,7 +8,7 @@ parameters;
 p_B = mu_B/r;
 p_G = mu_G/r;
 
-% Taylor expansion for singularity term:
+% Taylor expansion for singularity terms:
 syms x
 expr = matlabFunction(...
     taylor( 2/( sigma^2* x^2*(1-x)^2 ), x, 'ExpansionPoint',.5,'Order',5));
@@ -18,6 +18,7 @@ exprTheta = matlabFunction(...
 
 exprThetaMinus = matlabFunction(...
     taylor( (x*(1-x))^(1-theta), x, 'ExpansionPoint',.5,'Order',7));
+
 
 ode_fun = @(z,y) ode(z,y,r,mu_B,mu_G,theta,gamma,sigma,expr, exprTheta, exprThetaMinus);
 bc_fun = @(ya, yb) bc(ya, yb, p_B, p_G);
