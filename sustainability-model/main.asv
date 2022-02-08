@@ -2,18 +2,14 @@ clear all, close all, clc
 %% Code options
 % Explanation of the code:
 % This code solves an ODE regarding the degree of sustainability (z in
-% [0,1], z=1 means 100% green and z=0 means 100% brown). It does so for a 
-% model without agency frictions (i.e. first best)
+% [0,1]). It does so for a model without agency frictions (i.e. first best)
 % and a model with agency frictions. Agency frictions require a cost of
 % effort function of the agent. The variable gFunOption represents the type
 % of functions implemented. The most general is
 % g(z,a)=a^2*(z*(1-z))^theta/2. In the options this can be enabled via
 % 'theta'. If one chooses 'scaled', then theta=1, and if one chooses
 % 'unscaled', then theta=0. These two cases represent numerically
-% problematic cases, hence they have to be manually selected. The ODE is
-% solved via MATLAB's boundary value problem solver (bvp). How this exactly
-% works can be found in their documentation. My guess should be a
-% relatively robust shooting algorithm. It is based on ode89(.) of MATLAB.
+% problematic cases, hence they have to be manually selected. The OD
 
 % Load in the parameters:
 parameters;
@@ -43,14 +39,14 @@ bc_fun = @(ya, yb) bc(ya, yb, p_B, p_G);
 
 % obtain init
 xmesh = linspace(0,1,1000);
-y0_guess = [p_B;0.1]; % start is known, V' is unknown. If code gives error, vary the derivative.
+y0_guess = [p_B;0.1]; % start is known, V' is unknown. Guess whole line
 guessFun = @(z) guessAgency(z,y0_guess,r,mu_G,mu_B,gamma,sigma,expr,exprTheta,exprThetaMinus,gFunOption);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=10000,AbsTol=1e-4,RelTol=1e-4);
 sol = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 
-% Plot results (same basic plots, not necessarily fancy)
+% Plot results
 if mu_G==mu_B
     plot(sol.x,sol.y(1,:))
     grid on
