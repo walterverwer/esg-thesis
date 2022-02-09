@@ -23,7 +23,7 @@ p_B = mu_B/r;
 p_G = mu_G/r;
 
 % choose from: 'theta': g(theta,z,a), 'scaled': g(theta=1,z,a), 'unscaled': g(theta=0,z,a)
-gFunOption = 'theta'; % I recommend either scaled or unscaled.
+gFunOption = 'scaled'; % I recommend either scaled or unscaled.
 %% Solve the boundary value problem with agency frictions
 
 % Taylor expansion for singularity terms:
@@ -48,10 +48,10 @@ guessFun = @(z) guessAgency(z,y0_guess,r,mu_G,mu_B,gamma,sigma,expr,exprTheta,ex
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
-sol = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
+sol_agency = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 
 % Plot results (same basic plots, not necessarily fancy)
-plotAgency(sol.x,sol.y(1,:),mu_G,mu_B,gFunOption)
+plotAgency(sol_agency.x,sol_agency.y(1,:),mu_G,mu_B,gFunOption)
 
 
 
@@ -72,7 +72,41 @@ guessFun = @(z) guessFb(z,y0_guess,r,mu_G,mu_B,expr,exprTheta,exprThetaMinus,gFu
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
-sol = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
+sol_fb = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 
 % Plot results (same basic plots, not necessarily fancy)
-plotFb(sol.x,sol.y(1,:),mu_G,mu_B,gFunOption)
+plotFb(sol_fb.x,sol_fb.y(1,:),mu_G,mu_B,gFunOption)
+
+
+%% Comparison plots
+
+if isequal(gFunOption,'scaled')
+    plot(sol_fb.x,sol_fb.y(1,:))
+    hold on
+    plot(sol_agency.x,sol_agency.y(1,:))
+    grid on
+    legend('First Best', 'With Agency Friction')
+    title('Comparison first best with agency friction, $\mu^G \neq \mu^B$ for $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
+    saveas(gca,[pwd '/figures/various_gFun_plots/comparison/sol_unequal_comp_scaled.eps'],'epsc')
+
+elseif isequal(gFunOption,'unscaled')
+    plot(sol_fb.x,sol_fb.y(1,:))
+    hold on
+    plot(sol_agency.x,sol_agency.y(1,:))
+    grid on
+    legend('First Best', 'With Agency Friction')
+    title('Comparison first best with agency friction, $\mu^G \neq \mu^B$ for $g(z,a)=\frac{a^2}{2}$', 'interpreter','latex')
+    saveas(gca,[pwd '/figures/various_gFun_plots/comparison/sol_unequal_comp_unscaled.eps'],'epsc')
+
+else
+    plot(sol_fb.x,sol_fb.y(1,:))
+    hold on
+    plot(sol_agency.x,sol_agency.y(1,:))
+    grid on
+    legend('First Best', 'With Agency Friction')
+    title('Comparison first best with agency friction, $\mu^G \neq \mu^B$ for $g(z,a)=\frac{a^2z^\theta(1-z)^\theta}{2}$', 'interpreter','latex')
+    saveas(gca,[pwd '/figures/various_gFun_plots/comparison/sol_unequal_comp_theta.eps'],'epsc')
+end
+
+
+
