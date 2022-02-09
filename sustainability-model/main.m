@@ -23,7 +23,7 @@ p_B = mu_B/r;
 p_G = mu_G/r;
 
 % choose from: 'theta': g(theta,z,a), 'scaled': g(theta=1,z,a), 'unscaled': g(theta=0,z,a)
-gFunOption = 'scaled'; % I recommend either scaled or unscaled.
+gFunOption = 'theta'; % I recommend either scaled or unscaled.
 %% Solve the boundary value problem with agency frictions
 
 % Taylor expansion for singularity terms:
@@ -47,27 +47,32 @@ y0_guess = [p_B;0.1]; % start is known, V' is unknown. If code gives error, vary
 guessFun = @(z) guessAgency(z,y0_guess,r,mu_G,mu_B,gamma,sigma,expr,exprTheta,exprThetaMinus,gFunOption);
 solinit = bvpinit(xmesh, guessFun);
 
-bvpoptions = bvpset(Stats="on",Nmax=10000,AbsTol=1e-4,RelTol=1e-4);
+bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
 sol = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 
 % Plot results (same basic plots, not necessarily fancy)
-if mu_G==mu_B
-    plot(sol.x,sol.y(1,:))
-    grid on
-    title(['$\mu^G = \mu^B$ for g(z,a) type\ ',gFunOption], 'interpreter','latex')
-    saveas(gca,'sol_equal_agency.eps','epsc')
-else
-    plot(sol.x,sol.y(1,:))
-    grid on
-    title(['$\mu^G \neq \mu^B$ for g(z,a) type\ ',gFunOption], 'interpreter','latex')
-    saveas(gca,'sol_unequal_agency.eps','epsc')
-end
+plotAgency(sol.x,sol.y(1,:),mu_G,mu_B,gFunOption)
 
 
 
+%% Solve the boundary value problem first best case
 
+% Taylor expansion for singularity terms:
+syms x
+expr = matlabFunction(...
+    taylor( 2/( sigma^2* x^2*(1-x)^2 ), x, 'ExpansionPoint',.5,'Order',5));
 
+ode_fun = @(z,y) odeFb(z,y,r,mu_B,mu_G,expr,exprTheta,exprThetaMinus,gFunOption);
+bc_fun = @(ya, yb) bc(ya, yb, p_B, p_G);
 
+% obtain init
+xmesh = linspace(0,1,1000);
+y0_guess = [p_B;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
+guessFun = @(z) guessFb(z,y0_guess,r,mu_G,mu_B,expr,exprTheta,exprThetaMinus,gFunOption);
+solinit = bvpinit(xmesh, guessFun);
 
+bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
+sol = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 
-
+% Plot results (same basic plots, not necessarily fancy)
+plotFb(sol.x,sol.y(1,:),mu_G,mu_B,gFunOption)
