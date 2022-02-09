@@ -1,4 +1,4 @@
-function dy = odeAgency(z,y,r,mu_B,mu_G,gamma,sigma,expr,exprTheta,exprThetaMinus,option)
+function dy = odeAgency(z,y,r,mu_B,mu_G,gamma,sigma,expr,exprTheta,exprThetaMinus,a_bar,option)
 %ODE_V_FB Function to solve for the ODE of the first best value of V
 %   write the second order ODE as a system of first-order equations. Define
 %   y(1) := j(z) and y(2) := j'(z)
@@ -11,6 +11,9 @@ function dy = odeAgency(z,y,r,mu_B,mu_G,gamma,sigma,expr,exprTheta,exprThetaMinu
 if isequal(option,'scaled')
     % First, define the optimal effort level (a^*), depending on choice
     a = ( y(2)*z*(1-z) ) / ( 1 + gamma*r*sigma^2*z*(1-z) );
+    if abs(a)>a_bar
+        a=sign(a)*a_bar;
+    end
     
     % ode stuff:
     dy = zeros(2,1);  
@@ -22,6 +25,9 @@ if isequal(option,'scaled')
 elseif isequal(option,'unscaled')
     % First, define the optimal effort level (a^*), depending on choice
     a = ( y(2)*z*(1-z) ) / ( 1 + gamma*r*sigma^2 );
+    if abs(a)>a_bar
+        a=sign(a)*a_bar;
+    end
 
     % ode stuff:
     dy = zeros(2,1);  
@@ -33,6 +39,9 @@ elseif isequal(option,'unscaled')
 else
     % First, define the optimal effort level (a^*), depending on choice
     a = ( y(2)* exprThetaMinus(z) ) / (1 + gamma*r*sigma^2* (exprTheta(z)));
+    if abs(a)>a_bar
+        a=sign(a)*a_bar;
+    end
 
     % ode stuff:
     dy = zeros(2,1);  

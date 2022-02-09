@@ -38,13 +38,13 @@ exprThetaMinus = matlabFunction(...
     taylor( (x*(1-x))^(1-theta), x, 'ExpansionPoint',.5,'Order',7));
 
 
-ode_fun = @(z,y) odeAgency(z,y,r,mu_B,mu_G,gamma,sigma,expr,exprTheta,exprThetaMinus,gFunOption);
+ode_fun = @(z,y) odeAgency(z,y,r,mu_B,mu_G,gamma,sigma,expr,exprTheta,exprThetaMinus,a_bar,gFunOption);
 bc_fun = @(ya, yb) bc(ya, yb, p_B, p_G);
 
 % obtain init
 xmesh = linspace(0,1,1000);
 y0_guess = [p_B;0.1]; % start is known, V' is unknown. If code gives error, vary the derivative.
-guessFun = @(z) guessAgency(z,y0_guess,r,mu_G,mu_B,gamma,sigma,expr,exprTheta,exprThetaMinus,gFunOption);
+guessFun = @(z) guessAgency(z,y0_guess,r,mu_G,mu_B,gamma,sigma,expr,exprTheta,exprThetaMinus,a_bar,gFunOption);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
@@ -62,13 +62,13 @@ syms x
 expr = matlabFunction(...
     taylor( 2/( sigma^2* x^2*(1-x)^2 ), x, 'ExpansionPoint',.5,'Order',5));
 
-ode_fun = @(z,y) odeFb(z,y,r,mu_B,mu_G,expr,exprTheta,exprThetaMinus,gFunOption);
+ode_fun = @(z,y) odeFb(z,y,r,mu_B,mu_G,expr,exprTheta,exprThetaMinus,a_bar,gFunOption);
 bc_fun = @(ya, yb) bc(ya, yb, p_B, p_G);
 
 % obtain init
 xmesh = linspace(0,1,1000);
 y0_guess = [p_B;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
-guessFun = @(z) guessFb(z,y0_guess,r,mu_G,mu_B,expr,exprTheta,exprThetaMinus,gFunOption);
+guessFun = @(z) guessFb(z,y0_guess,r,mu_G,mu_B,expr,exprTheta,exprThetaMinus,a_bar,gFunOption);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
