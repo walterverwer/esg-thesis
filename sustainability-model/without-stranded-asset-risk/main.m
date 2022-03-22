@@ -78,6 +78,7 @@ sol_fb = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 plotFb(sol_fb.x,sol_fb.y(1,:),mu_G,mu_B,gFunOption)
 
 
+
 %% Comparison plots
 
 if isequal(gFunOption,'scaled')
