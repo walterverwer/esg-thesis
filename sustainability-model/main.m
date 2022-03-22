@@ -78,6 +78,62 @@ sol_fb = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 plotFb(sol_fb.x,sol_fb.y(1,:),mu_G,mu_B,gFunOption)
 
 
+%% Stranded Asset Risk and Green Preferences First Best Case
+parameters;
+
+% first solve after the shock:
+% boundary values after the shock:
+p_BA = 0;
+p_GA = (mu_G+xi)/r;
+
+syms x
+expr = matlabFunction(...
+    taylor( 2/( sigma^2* x^2*(1-x)^2 ), x, 'ExpansionPoint',.5,'Order',5));
+
+ode_fun = @(z,y) odeAShock(z,y,r,mu_G,xi,expr,a_bar);
+bc_fun = @(ya, yb) bc(ya, yb, p_BA, p_GA);
+
+% obtain init
+xmesh = linspace(0,1,2000);
+y0_guess = [p_BA;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
+guessFun = @(z) guessAShock(z,y0_guess,r,mu_G,xi,expr,a_bar);
+solinit = bvpinit(xmesh, guessFun);
+
+bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
+sol_AShock = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
+
+% Plot results (same basic plots, not necessarily fancy)
+plot(sol_AShock.x,sol_AShock.y(1,:))
+grid on
+title('After Shock, $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
+saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.eps'],'epsc')
+
+% Fit value function after shock
+pol = 17;
+fit_AShock = polyfit(sol_AShock.x, sol_AShock.y(1,:),pol);
+
+syms zi
+AShock_fun = fit_AShock*zi.^(17:-1:0)';
+AShock_fun = matlabFunction(AShock_fun);
+
+% solve the model before the shock, using the polyfit after the shock
+ode_fun = @(z,y) odeBShock(z,y,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
+bc_fun = @(ya, yb) bc(ya, yb, p_B, p_GA);
+
+% obtain init
+xmesh = linspace(0,1,2000);
+y0_guess = [p_B;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
+guessFun = @(z) guessBShock(z,y0_guess,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
+solinit = bvpinit(xmesh, guessFun);
+
+bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
+sol_BShock = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
+
+% Plot results (same basic plots, not necessarily fancy)
+plot(sol_BShock.x,sol_BShock.y(1,:))
+grid on
+title('Before Shock, $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
+saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_before_shock.eps'],'epsc')
 
 %% Comparison plots
 
@@ -108,5 +164,3 @@ else
     title('Comparison first best with agency friction, $\mu^G \neq \mu^B$ for $g(z,a)=\frac{a^2z^\theta(1-z)^\theta}{2}$', 'interpreter','latex')
     saveas(gca,[pwd '/figures/various_gFun_plots/comparison/sol_unequal_comp_theta.eps'],'epsc')
 end
-
-
