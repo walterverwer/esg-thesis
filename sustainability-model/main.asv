@@ -117,14 +117,14 @@ AShock_fun = fit_AShock*zi.^(17:-1:0)';
 AShock_fun = matlabFunction(AShock_fun);
 
 % solve the model before the shock, using the polyfit after the shock
-p_BB = mu_B / (lambda + r);
+p_BB = mu_G / (lambda + r);
 
 ode_fun = @(z,y) odeBShock(z,y,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
 bc_fun = @(ya, yb) bc(ya, yb, p_BB, p_GA);
 
 % obtain init
 xmesh = linspace(0,1,2000);
-y0_guess = [p_BB;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
+y0_guess = [p_B;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
 guessFun = @(z) guessBShock(z,y0_guess,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
 solinit = bvpinit(xmesh, guessFun);
 
