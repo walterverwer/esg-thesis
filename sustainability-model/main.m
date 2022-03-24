@@ -106,7 +106,8 @@ sol_AShock = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
 plot(sol_AShock.x,sol_AShock.y(1,:))
 grid on
 title('After Shock, $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
-saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.jpeg'],'jpeg')
+saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.eps'],'epsc')
+%saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.jpeg'],'jpeg')
 
 % Fit value function after shock
 pol = 17;
@@ -118,9 +119,10 @@ AShock_fun = matlabFunction(AShock_fun);
 
 % solve the model before the shock, using the polyfit after the shock
 p_BB = mu_B / (lambda + r);
+p_GB = (mu_G + xi + lambda*p_GA)/(r+lambda);
 
 ode_fun = @(z,y) odeBShock(z,y,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
-bc_fun = @(ya, yb) bc(ya, yb, p_BB, p_GA);
+bc_fun = @(ya, yb) bc(ya, yb, p_BB, p_GB);
 
 % obtain init
 xmesh = linspace(0,1,2000);
@@ -136,7 +138,8 @@ plot(sol_BShock.x,sol_BShock.y(1,:))
 grid on
 title('Before Shock, $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
 saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_before_shock.eps'],'epsc')
-saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_before_shock.jpeg'],'jpeg')
+%saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.jpeg'],'jpeg')
+
 
 %% Comparison plots
 
