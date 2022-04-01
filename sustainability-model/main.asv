@@ -2,7 +2,15 @@ clear all, close all, clc
 %% Code options
 % Explanation of the code:
 % This code solves an ODE regarding the degree of sustainability (z in
-% [0,1], z=1 means 100% green and z=0 means 100% brown).The ODE is
+% [0,1], z=1 means 100% green and z=0 means 100% brown). It does so for a 
+% model without agency frictions (i.e. first best)
+% and a model with agency frictions. Agency frictions require a cost of
+% effort function of the agent. The variable gFunOption represents the type
+% of functions implemented. The most general is
+% g(z,a)=a^2*(z*(1-z))^theta/2. In the options this can be enabled via
+% 'theta'. If one chooses 'scaled', then theta=1, and if one chooses
+% 'unscaled', then theta=0. These two cases represent numerically
+% problematic cases, hence they have to be manually selected. The ODE is
 % solved via MATLAB's boundary value problem solver (bvp). How this exactly
 % works can be found in their documentation. My guess should be a
 % relatively robust shooting algorithm. It is based on ode89(.) of MATLAB.
@@ -168,7 +176,7 @@ end
 
 %% FB SAR GP - a^* -> d lambda & d omega, before shock
 parameters;
-type = 'scaled'; %% ONLY WORKS FOR SCALED YET!!!
+type = 'unscaled';
 
 % for fixed omega
 lambda_low = 0.01;
@@ -187,7 +195,7 @@ grid on
 plot(sol_lambda_med.x, sol_lambda_med.y(2,:))
 plot(sol_lambda_high.x, sol_lambda_high.y(2,:))
 legend('Low lambda', 'Medium lambda', 'High lambda')
-title('Comparison for Different Values of $\lambda$ on $a^*_{ns}$', 'interpreter','latex')
+title('Comparison for Different Values of Lambda')
 saveas(gca,[pwd '/figures/fb_cross_derivatives/comparison_lambda.eps'],'epsc')
 
 % for fixed lambda
@@ -211,7 +219,6 @@ plot(sol_omega_low.x, sol_omega_low.y(2,:))
 plot(sol_omega_med.x, sol_omega_med.y(2,:))
 plot(sol_omega_high.x, sol_omega_high.y(2,:))
 legend('Zero Omega', 'Low Omega', 'Medium Omega', 'High Omega')
-title('Comparison for Different Values of $\omega$ on $a^*_{ns}$', 'interpreter','latex')
 saveas(gca,[pwd '/figures/fb_cross_derivatives/comparison_omega.eps'],'epsc')
 
 
