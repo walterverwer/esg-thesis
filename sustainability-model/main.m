@@ -84,19 +84,19 @@ parameters;
 % first solve after the shock:
 % boundary values after the shock:
 p_BA = 0;
-p_GA = (mu_G+xi)/r;
+p_GA = (mu_G+omega)/r;
 
 syms x
 expr = matlabFunction(...
     taylor( 2/( sigma^2* x^2*(1-x)^2 ), x, 'ExpansionPoint',.5,'Order',5));
 
-ode_fun = @(z,y) odeAShock(z,y,r,mu_G,xi,expr,a_bar);
+ode_fun = @(z,y) odeAShock(z,y,r,mu_G,omega,expr,a_bar);
 bc_fun = @(ya, yb) bc(ya, yb, p_BA, p_GA);
 
 % obtain init
 xmesh = linspace(0,1,2000);
 y0_guess = [p_BA;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
-guessFun = @(z) guessAShock(z,y0_guess,r,mu_G,xi,expr,a_bar);
+guessFun = @(z) guessAShock(z,y0_guess,r,mu_G,omega,expr,a_bar);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
@@ -119,15 +119,15 @@ AShock_fun = matlabFunction(AShock_fun);
 
 % solve the model before the shock, using the polyfit after the shock
 p_BB = mu_B / (lambda + r);
-p_GB = (mu_G + xi + lambda*p_GA)/(r+lambda);
+p_GB = (mu_G + omega + lambda*p_GA)/(r+lambda);
 
-ode_fun = @(z,y) odeBShock(z,y,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
+ode_fun = @(z,y) odeBShock(z,y,r,mu_B,mu_G,omega,lambda,expr,a_bar,AShock_fun);
 bc_fun = @(ya, yb) bc(ya, yb, p_BB, p_GB);
 
 % obtain init
 xmesh = linspace(0,1,2000);
 y0_guess = [p_BB;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
-guessFun = @(z) guessBShock(z,y0_guess,r,mu_B,mu_G,xi,lambda,expr,a_bar,AShock_fun);
+guessFun = @(z) guessBShock(z,y0_guess,r,mu_B,mu_G,omega,lambda,expr,a_bar,AShock_fun);
 solinit = bvpinit(xmesh, guessFun);
 
 bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
@@ -139,6 +139,7 @@ grid on
 title('Before Shock, $g(z,a)=\frac{a^2z(1-z)}{2}$', 'interpreter','latex')
 saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_before_shock.eps'],'epsc')
 %saveas(gca,[pwd '/figures/various_gFun_plots/after_shock/sol_after_shock.jpeg'],'jpeg')
+
 
 
 %% Comparison plots
@@ -170,3 +171,49 @@ else
     title('Comparison first best with agency friction, $\mu^G \neq \mu^B$ for $g(z,a)=\frac{a^2z^\theta(1-z)^\theta}{2}$', 'interpreter','latex')
     saveas(gca,[pwd '/figures/various_gFun_plots/comparison/sol_unequal_comp_theta.eps'],'epsc')
 end
+
+
+
+%% FB SAR GP - a^* -> d lambda & d omega, before shock
+
+% for fixed omega
+lambda_low = 0.01;
+[~, sol_lambda_low] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda_low,omega);
+
+lambda_med = 0.02;
+[~, sol_lambda_med] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda_med,omega);
+
+lambda_high = 0.05;
+[~, sol_lambda_high] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda_high,omega);
+
+figure
+plot(sol_lambda_low.x, sol_lambda_low.y(2,:))
+hold on
+grid on
+plot(sol_lambda_med.x, sol_lambda_med.y(2,:))
+plot(sol_lambda_high.x, sol_lambda_high.y(2,:))
+legend('Low lambda', 'Medium lambda', 'High lambda')
+
+
+% for fixed lambda
+omega_zero = 0.0;
+[~, sol_omega_zero] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega_zero);
+
+omega_low = 0.01;
+[~, sol_omega_low] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega_low);
+
+omega_med = 0.02;
+[~, sol_omega_med] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega_med);
+
+omega_high = 0.05;
+[~, sol_omega_high] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega_high);
+
+figure
+plot(sol_omega_zero.x, sol_omega_zero.y(2,:))
+hold on
+grid on
+plot(sol_omega_low.x, sol_omega_low.y(2,:))
+plot(sol_omega_med.x, sol_omega_med.y(2,:))
+plot(sol_omega_high.x, sol_omega_high.y(2,:))
+legend('Zero Omega', 'Low Omega', 'Medium Omega', 'High Omega')
+
