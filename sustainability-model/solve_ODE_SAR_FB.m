@@ -17,12 +17,12 @@ function [sol_A, sol_B] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda1,omega
     bc_fun = @(ya, yb) bc(ya, yb, p_BA, p_GA);
     
     % obtain init
-    xmesh = linspace(0,1,2000);
+    xmesh = linspace(0,1,5000);
     y0_guess = [p_BA;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
     guessFun = @(z) guessAShock(z,y0_guess,r,mu_G,omega,expr,a_bar,type);
     solinit = bvpinit(xmesh, guessFun);
     
-    bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
+    bvpoptions = bvpset(Stats="on",Nmax=150000,AbsTol=1e-4,RelTol=1e-4);
     sol_AShock = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
     
     % Fit value function after shock
@@ -41,12 +41,12 @@ function [sol_A, sol_B] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda1,omega
     bc_fun = @(ya, yb) bc(ya, yb, p_BB, p_GB);
     
     % obtain init
-    xmesh = linspace(0,1,2000);
+    xmesh = linspace(0,1,5000);
     y0_guess = [p_BB;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
     guessFun = @(z) guessBShock(z,y0_guess,r,mu_B,mu_G,omega,lambda,expr,a_bar,AShock_fun,type);
     solinit = bvpinit(xmesh, guessFun);
     
-    bvpoptions = bvpset(Stats="on",Nmax=100000,AbsTol=1e-4,RelTol=1e-4);
+    bvpoptions = bvpset(Stats="on",Nmax=150000,AbsTol=1e-6,RelTol=1e-6);
     sol_BShock = bvp5c(ode_fun,bc_fun,solinit,bvpoptions);
     
     sol_A = sol_AShock;

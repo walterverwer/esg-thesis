@@ -20,9 +20,9 @@ if isequal(type,'scaled')
 
 elseif isequal(type,'unscaled')
     a = y(2)*z*(1-z);
-    if abs(a)>a_bar
-        a=sign(a)*a_bar;
-    end
+    %if abs(a)>a_bar
+        %a=sign(a)*a_bar;
+    %end
     
     % ode after a shock
     dy = zeros(2,1);  
