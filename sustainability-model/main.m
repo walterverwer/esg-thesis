@@ -1,4 +1,5 @@
 clear all, close all, clc
+
 %% Code options
 % Explanation of the code:
 % This code solves an ODE regarding the degree of sustainability (z in
@@ -319,12 +320,12 @@ title('after')
 % Cross derivative lambda omega
 
 parameters;
-% Apply (forward) finite difference method to obtain an approximation of
+% Apply (central) finite difference method to obtain an approximation of
 % the cross derivative for omega and lambda on effort (a).
 
 % Step 1: define step sizes
-h_omega = omega*0.25; % change in omega
-h_lambda = lambda*0.25; % change in lambda
+h_omega = omega*0.5; % change in omega
+h_lambda = lambda*0.5; % change in lambda
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -363,23 +364,25 @@ figure('name', 'Numerical cross derivative')
 fplot(cross_lambda_omega, [0.1 0.9])
 
 % Try with makima to get cross derivative:
-xq = 0:0.001:1;
+xq = 0:0.0001:1;
 m_ShockB_1 = makima(sol_BShock_1.x, sol_BShock_1.y(2,:), xq);
 m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
 m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
 m_ShockB_4 = makima(sol_BShock_4.x, sol_BShock_4.y(2,:), xq);
 
-cross_lambda_omega = (m_ShockB_1 - m_ShockB_2 - m_ShockB_3 + m_ShockB_4) / 4*h_lambda*h_omega;
+cross_lambda_omega_fb = (m_ShockB_1 - m_ShockB_2 - m_ShockB_3 + m_ShockB_4) / 4*h_lambda*h_omega;
 
 figure('name', '(MAKIMA) Numerical cross derivative lambda omega fb')
-plot(xq,cross_lambda_omega)
-title('(MAKIMA) Numerical cross derivative lambda omega first best')
+plot(xq,cross_lambda_omega_fb)
+title('Numerical cross derivative (first best)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_fb.eps'],'epsc')
 
-% Derivative lambda
+save('cross_derivative_fb.mat','cross_lambda_omega_fb')
+
+%% Derivative lambda
 parameters;
 % Step 1: define step sizes
-h_lambda = lambda*0.25; % change in lambda
+h_lambda = lambda*0.5; % change in lambda
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -419,7 +422,7 @@ fplot(derivative_lambda, [0.1 0.9])
 
 % Try with makima to get cross derivative:
 
-xq = 0:0.001:1;
+xq = 0:0.0001:1;
 m_ShockB_1 = makima(sol_BShock_1.x, sol_BShock_1.y(2,:), xq);
 m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
 m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
@@ -429,14 +432,14 @@ derivative_lambda = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 1
 
 figure('name', '(MAKIMA) Numerical derivative lambda agency')
 plot(xq,derivative_lambda)
-title('(MAKIMA) Numerical derivative lambda first best')
+title('Numerical derivative lambda (first best)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_lambda_fb.eps'],'epsc')
 
 
 % Derivative omega
 parameters;
 % Step 1: define step sizes
-h_omega = omega*0.25; % change in lambda
+h_omega = omega*0.5; % change in lambda
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -475,7 +478,7 @@ figure('name', 'Numerical derivative omega')
 fplot(derivative_omega, [0.1 0.9])
 
 % Try with makima to get cross derivative:
-xq = 0:0.001:1;
+xq = 0:0.0001:1;
 m_ShockB_1 = makima(sol_BShock_1.x, sol_BShock_1.y(2,:), xq);
 m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
 m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
@@ -485,7 +488,7 @@ derivative_omega = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 12
 
 figure('name', '(MAKIMA) Numerical derivative omega first best')
 plot(xq,derivative_omega)
-title('(MAKIMA) Numerical derivative omega first best')
+title('Numerical derivative omega (first best)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_omega_fb.eps'],'epsc')
 
 %% Solve Agency Friction Model With Stranded Asset Risk and Green Preferences
@@ -510,7 +513,7 @@ title('After Shock Agency')
 
 parameters;
 % Step 1: define step sizes
-h_lambda = lambda*0.25; % change in lambda
+h_lambda = lambda*0.5; % change in lambda
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -549,7 +552,7 @@ figure('name', 'Numerical derivative lambda agency')
 fplot(derivative_lambda, [0 1])
 
 % Try with makima to get cross derivative:
-xq = 0:0.001:1;
+xq = 0:0.0001:1;
 m_agencyB_1 = makima(sol_BAgency_1.x, sol_BAgency_1.y(2,:), xq);
 m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
 m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
@@ -559,7 +562,7 @@ derivative_lambda = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4)
 
 figure('name', '(MAKIMA) Numerical derivative lambda agency')
 plot(xq,derivative_lambda)
-title('(MAKIMA) Numerical derivative lambda agency')
+title('Numerical derivative lambda (agency)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_lambda_agency.eps'],'epsc')
 
 
@@ -567,7 +570,7 @@ saveas(gca,[pwd '/figures/agency_derivatives/makima_lambda_agency.eps'],'epsc')
 
 parameters;
 % Step 1: define step sizes
-h_omega = omega*0.1; % change in omega
+h_omega = omega*0.5; % change in omega
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -606,7 +609,7 @@ figure('name', 'Numerical derivative omega agency')
 fplot(derivative_omega, [0 1])
 
 % Try with makima to get cross derivative:
-xq = 0:0.001:1;
+xq = 0:0.0001:1;
 m_agencyB_1 = makima(sol_BAgency_1.x, sol_BAgency_1.y(2,:), xq);
 m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
 m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
@@ -616,15 +619,15 @@ derivative_omega = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4) 
 
 figure('name', '(MAKIMA) Numerical derivative omega agency')
 plot(xq,derivative_omega)
-title('(MAKIMA) Numerical derivative omega agency')
+title('Numerical derivative omega (agency)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_omega_agency.eps'],'epsc')
 
-% Compute Numerical Cross Derivative Lambda Omega Agency Friction Model
+%% Compute Numerical Cross Derivative Lambda Omega Agency Friction Model
 
 parameters;
 % Step 1: define step sizes
-h_lambda = lambda*0.25; % change in lambda
-h_omega = omega*0.1; % change in omega
+h_lambda = lambda*0.5; % change in lambda
+h_omega = omega*0.5; % change in omega
 
 % Step 2: compute the four value functions for different parameters
 type = 'scaled'; % scaled: g(z,a)
@@ -662,19 +665,110 @@ cross_lambda_omega = @(z) (BAgency_fun1(z) - BAgency_fun2(z) - BAgency_fun3(z) +
 figure('name', 'Numerical cross derivative')
 fplot(cross_lambda_omega, [0 1])
 
-% Try with makima to get cross derivative:
-xq = 0:0.001:1;
+% Try with makima to get derivative:
+xq = 0:0.0001:1;
 m_agencyB_1 = makima(sol_BAgency_1.x, sol_BAgency_1.y(2,:), xq);
 m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
 m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
 m_agencyB_4 = makima(sol_BAgency_4.x, sol_BAgency_4.y(2,:), xq);
 
-cross_lambda_omega = (m_agencyB_1 - m_agencyB_2 - m_agencyB_3 + m_agencyB_4) / 4*h_omega*h_lambda;
+cross_lambda_omega_agency = (m_agencyB_1 - m_agencyB_2 - m_agencyB_3 + m_agencyB_4) / 4*h_omega*h_lambda;
 
 figure('name', '(MAKIMA) Numerical cross derivative lambda omega agency')
-plot(xq,cross_lambda_omega)
-title('(MAKIMA) Numerical cross derivative lambda omega agency')
+plot(xq,cross_lambda_omega_agency)
+title('Numerical Cross Derivative (agency)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_agency.eps'],'epsc')
+
+save('cross_derivative_agency.mat','cross_lambda_omega_agency')
+
+%% Plot comparison cross derivative under fb and agency
+load('cross_derivative_agency')
+load('cross_derivative_fb')
+
+figure; 
+plot(xq,cross_lambda_omega_fb)
+hold on
+plot(xq,cross_lambda_omega_agency)
+title('Comparison Cross Derivatives')
+legend('First Best', 'Moral Hazard')
+grid on
+
+%% Higher accuracy Cross derivative
+parameters;
+% define step sizes
+h_lambda = 0.01; % change in lambda
+h_omega = 0.01; % change in omega
+h=0.01;
+
+% compute the four value functions for different parameters
+type = 'scaled'; % scaled: g(z,a)
+
+% Filling in the formula for finite difference (see notes)
+
+
+%[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega+h_omega,gamma,type);
+
+
+% positive
+f11 = fii(1,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f12 = fii(1,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f21 = fii(2,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f22 = fii(2,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+% negative (m)
+fm1m1 = fii(-1,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm1m2 = fii(-1,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm2m1 = fii(-2,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm2m2 = fii(-2,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+% positive and negative:
+f1m1 = fii(1,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm11 = fii(-1,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+fm21 = fii(-2,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f1m2 = fii(1,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+f2m1 = fii(2,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm12 = fii(-1,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+f2m2 = fii(2,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm22 = fii(-2,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+
+%%%%%%%%%%
+
+% positive
+f11 = makima(f11.x, f11.y(2,:), xq);
+f12 = makima(f12.x, f12.y(2,:), xq);
+f21 = makima(f21.x, f21.y(2,:), xq);
+f22 = makima(f22.x, f22.y(2,:), xq);
+
+% negative (m)
+fm1m1 = makima(fm1m1.x, fm1m1.y(2,:), xq);
+fm1m2 = makima(fm1m2.x, fm1m2.y(2,:), xq);
+fm2m1 = makima(fm2m1.x, fm2m1.y(2,:), xq);
+fm2m2 = makima(fm2m2.x, fm2m2.y(2,:), xq);
+
+% positive and negative:
+f1m1 = makima(f1m1.x, f1m1.y(2,:), xq);
+fm11 = makima(fm11.x, fm11.y(2,:), xq);
+
+fm21 = makima(fm21.x, fm21.y(2,:), xq);
+f1m2 = makima(f1m2.x, f1m2.y(2,:), xq);
+
+f2m1 = makima(f2m1.x, f2m1.y(2,:), xq);
+fm12 = makima(fm12.x, fm12.y(2,:), xq);
+
+f2m2 = makima(f2m2.x, f2m2.y(2,:), xq);
+fm22 = makima(fm22.x, fm22.y(2,:), xq);
+
+cross_lambda_omega = (8*(f1m2 + f2m1 + fm21 + fm12) - 8*(fm1m2 + fm2m1 + f12 + f21) ...
+                       - (f2m2 + fm22 - fm2m2 - f22) + 64*(fm1m1 + f11 - f1m1 - fm11)) / 144*h^2;
+
+
+figure('name', 'Cross Agency 4th order error')
+plot(xq,cross_lambda_omega)
+title('Agency Cross')
+saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_agency_fourth_order.eps'],'epsc')
 
 
 %% Some basic functions
@@ -686,4 +780,9 @@ function y = obtain_a(sol_y_prime,a_bar)
         end
     end
     y = sol_y_prime;
+end
+
+
+function sol_ii = fii(k_l, k_o, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type)
+    [~, sol_ii] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h*k_l,omega+h*k_o,gamma,type);
 end
