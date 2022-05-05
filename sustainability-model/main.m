@@ -302,9 +302,8 @@ fplot(@(z) dBShock_fun(z), [0 1])
 %% Solve analytical ODE fb
 parameters;
 
-[sol_AShock, sol_BShock] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega,type);
+[sol_AShock, sol_BShock] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,type);
 
-%%
 figure;
 plot(sol_BShock.x, sol_BShock.y(1,:))
 title('before')
@@ -316,8 +315,70 @@ title('after')
 
 
 %% Approximate (cross) derivative with finite difference
+% Cross derivative tau omega
 
-% Cross derivative lambda omega
+parameters;
+% Apply (central) finite difference method to obtain an approximation of
+% the cross derivative for omega and lambda on effort (a).
+
+% Step 1: define step sizes
+h_omega = omega*0.5; % change in omega
+h_tau = tau*0.1; % change in tau
+
+% Step 2: compute the four value functions for different parameters
+type = 'scaled'; % scaled: g(z,a)
+
+% Filling in the formula for finite difference (see notes)
+[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau+h_tau,sigma,a_bar,lambda,omega+h_omega,type);
+[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau+h_tau,sigma,a_bar,lambda,omega-h_omega,type);
+[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau-h_tau,sigma,a_bar,lambda,omega+h_omega,type);
+[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau-h_tau,sigma,a_bar,lambda,omega-h_omega,type);
+
+% Step 3: fit the derivative to obtain a comparable 'function'
+pol = 25;
+fit_dBShock1 = polyfit(sol_BShock_1.x, sol_BShock_1.y(2,:),pol);
+fit_dBShock2 = polyfit(sol_BShock_2.x, sol_BShock_2.y(2,:),pol);
+fit_dBShock3 = polyfit(sol_BShock_3.x, sol_BShock_3.y(2,:),pol);
+fit_dBShock4 = polyfit(sol_BShock_4.x, sol_BShock_4.y(2,:),pol);
+
+% Step 4: obtain functional form:
+syms zi
+BShock_fun1 = fit_dBShock1*zi.^(pol:-1:0)';
+BShock_fun1 = matlabFunction(BShock_fun1);
+
+BShock_fun2 = fit_dBShock2*zi.^(pol:-1:0)';
+BShock_fun2 = matlabFunction(BShock_fun2);
+
+BShock_fun3 = fit_dBShock3*zi.^(pol:-1:0)';
+BShock_fun3 = matlabFunction(BShock_fun3);
+
+BShock_fun4 = fit_dBShock4*zi.^(pol:-1:0)';
+BShock_fun4 = matlabFunction(BShock_fun4);
+
+% Step 5: compute central finite difference
+cross_tau_omega = @(z) (BShock_fun1(z) - BShock_fun2(z) - BShock_fun3(z) + BShock_fun4(z)) / 4*h_omega*h_tau;
+
+figure('name', 'Numerical cross derivative')
+fplot(cross_tau_omega, [0 1])
+
+% Try with makima to get cross derivative:
+xq = 0:0.0001:1;
+m_ShockB_1 = makima(sol_BShock_1.x, sol_BShock_1.y(2,:), xq);
+m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
+m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
+m_ShockB_4 = makima(sol_BShock_4.x, sol_BShock_4.y(2,:), xq);
+
+cross_tau_omega_fb = (m_ShockB_1 - m_ShockB_2 - m_ShockB_3 + m_ShockB_4) / 4*h_tau*h_omega;
+
+figure('name', '(MAKIMA) Numerical cross derivative tau omega fb')
+plot(xq,cross_tau_omega_fb)
+title('Numerical cross derivative tau omega (first best)')
+saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_tau_omega_fb.eps'],'epsc')
+
+save('cross_derivative_tau_omega_fb.mat','cross_tau_omega_fb')
+
+
+%% Cross derivative lambda omega
 
 parameters;
 % Apply (central) finite difference method to obtain an approximation of
@@ -331,10 +392,10 @@ h_lambda = lambda*0.5; % change in lambda
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega+h_omega,type);
-[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega-h_omega,type);
-[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega+h_omega,type);
-[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega-h_omega,type);
+[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega+h_omega,type);
+[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega-h_omega,type);
+[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega+h_omega,type);
+[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega-h_omega,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 25;
@@ -379,7 +440,7 @@ saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_fb.eps'],'epsc')
 
 save('cross_derivative_fb.mat','cross_lambda_omega_fb')
 
-%% Derivative lambda
+% Derivative lambda
 parameters;
 % Step 1: define step sizes
 h_lambda = lambda*0.5; % change in lambda
@@ -388,10 +449,10 @@ h_lambda = lambda*0.5; % change in lambda
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda+2*h_lambda,omega,type);
-[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega,type);
-[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega,type);
-[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda-2*h_lambda,omega,type);
+[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda+2*h_lambda,omega,type);
+[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega,type);
+[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega,type);
+[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda-2*h_lambda,omega,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 25;
@@ -428,13 +489,14 @@ m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
 m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
 m_ShockB_4 = makima(sol_BShock_4.x, sol_BShock_4.y(2,:), xq);
 
-derivative_lambda = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 12*h_lambda;
+derivative_lambda_fb = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 12*h_lambda;
 
 figure('name', '(MAKIMA) Numerical derivative lambda agency')
-plot(xq,derivative_lambda)
+plot(xq,derivative_lambda_fb)
 title('Numerical derivative lambda (first best)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_lambda_fb.eps'],'epsc')
 
+save('derivative_lambda_fb.mat','derivative_lambda_fb')
 
 % Derivative omega
 parameters;
@@ -445,10 +507,10 @@ h_omega = omega*0.5; % change in lambda
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega+2*h_omega,type);
-[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega+h_omega,type);
-[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega-h_omega,type);
-[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,sigma,a_bar,lambda,omega-2*h_omega,type);
+[~, sol_BShock_1] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega+2*h_omega,type);
+[~, sol_BShock_2] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega+h_omega,type);
+[~, sol_BShock_3] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega-h_omega,type);
+[~, sol_BShock_4] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega-2*h_omega,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 25;
@@ -484,17 +546,19 @@ m_ShockB_2 = makima(sol_BShock_2.x, sol_BShock_2.y(2,:), xq);
 m_ShockB_3 = makima(sol_BShock_3.x, sol_BShock_3.y(2,:), xq);
 m_aShockB_4 = makima(sol_BShock_4.x, sol_BShock_4.y(2,:), xq);
 
-derivative_omega = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 12*h_omega;
+derivative_omega_fb = (-m_ShockB_1 + 8*m_ShockB_2 - 8*m_ShockB_3 + m_ShockB_4) / 12*h_omega;
 
 figure('name', '(MAKIMA) Numerical derivative omega first best')
-plot(xq,derivative_omega)
+plot(xq,derivative_omega_fb)
 title('Numerical derivative omega (first best)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_omega_fb.eps'],'epsc')
+
+save('derivative_omega_fb.mat','derivative_omega_fb')
 
 %% Solve Agency Friction Model With Stranded Asset Risk and Green Preferences
 parameters;
 type='scaled';
-[sol_A_Agency, sol_B_Agency] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+[sol_A_Agency, sol_B_Agency] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
 figure;
 plot(sol_B_Agency.x,sol_B_Agency.y(1,:))
@@ -519,10 +583,10 @@ h_lambda = lambda*0.5; % change in lambda
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+2*h_lambda,omega,gamma,type);
-[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega,gamma,type);
-[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega,gamma,type);
-[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda-2*h_lambda,omega,gamma,type);
+[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda+2*h_lambda,omega,gamma,type);
+[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega,gamma,type);
+[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega,gamma,type);
+[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda-2*h_lambda,omega,gamma,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 17;
@@ -558,13 +622,14 @@ m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
 m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
 m_agencyB_4 = makima(sol_BAgency_4.x, sol_BAgency_4.y(2,:), xq);
 
-derivative_lambda = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4) / 12*h_lambda;
+derivative_lambda_agency = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4) / 12*h_lambda;
 
 figure('name', '(MAKIMA) Numerical derivative lambda agency')
-plot(xq,derivative_lambda)
+plot(xq,derivative_lambda_agency)
 title('Numerical derivative lambda (agency)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_lambda_agency.eps'],'epsc')
 
+save('derivative_lambda_agency.mat','derivative_lambda_agency')
 
 % Compute Numerical Derivative Omega Agency Friction Model
 
@@ -576,10 +641,10 @@ h_omega = omega*0.5; % change in omega
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda,omega+2*h_omega,gamma,type);
-[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda,omega+h_omega,gamma,type);
-[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda,omega-h_omega,gamma,type);
-[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda,omega-2*h_omega,gamma,type);
+[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega+2*h_omega,gamma,type);
+[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega+h_omega,gamma,type);
+[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega-h_omega,gamma,type);
+[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega-2*h_omega,gamma,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 17;
@@ -615,14 +680,88 @@ m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
 m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
 m_agencyB_4 = makima(sol_BAgency_4.x, sol_BAgency_4.y(2,:), xq);
 
-derivative_omega = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4) / 12*h_omega;
+derivative_omega_agency = (-m_agencyB_1 + 8*m_agencyB_2 - 8*m_agencyB_3 + m_agencyB_4) / 12*h_omega;
 
 figure('name', '(MAKIMA) Numerical derivative omega agency')
-plot(xq,derivative_omega)
+plot(xq,derivative_omega_agency)
 title('Numerical derivative omega (agency)')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_omega_agency.eps'],'epsc')
 
-%% Compute Numerical Cross Derivative Lambda Omega Agency Friction Model
+save('derivative_omega_agency.mat','derivative_omega_agency')
+
+
+%% Compute Numerical Cross Derivative Tau Omega Agency Friction Model
+
+parameters;
+% Step 1: define step sizes
+h_tau = tau*0.1; % change in lambda
+h_omega = omega*0.5; % change in omega
+
+% Step 2: compute the four value functions for different parameters
+type = 'scaled'; % scaled: g(z,a)
+
+% Filling in the formula for finite difference (see notes)
+[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau+h_tau,sigma,a_bar,lambda,omega+h_omega,gamma,type);
+[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau-h_tau,sigma,a_bar,lambda,omega+h_omega,gamma,type);
+[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau+h_tau,sigma,a_bar,lambda,omega-h_omega,gamma,type);
+[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau-h_tau,sigma,a_bar,lambda,omega-h_omega,gamma,type);
+
+% Step 3: fit the derivative to obtain a comparable 'function'
+pol = 17;
+fit_dBAgency1 = polyfit(sol_BAgency_1.x, sol_BAgency_1.y(2,:),pol);
+fit_dBAgency2 = polyfit(sol_BAgency_2.x, sol_BAgency_2.y(2,:),pol);
+fit_dBAgency3 = polyfit(sol_BAgency_3.x, sol_BAgency_3.y(2,:),pol);
+fit_dBAgency4 = polyfit(sol_BAgency_4.x, sol_BAgency_4.y(2,:),pol);
+
+% Step 4: obtain functional form:
+syms zi
+BAgency_fun1 = fit_dBAgency1*zi.^(pol:-1:0)';
+BAgency_fun1 = matlabFunction(BAgency_fun1);
+
+BAgency_fun2 = fit_dBAgency2*zi.^(pol:-1:0)';
+BAgency_fun2 = matlabFunction(BAgency_fun2);
+
+BAgency_fun3 = fit_dBAgency3*zi.^(pol:-1:0)';
+BAgency_fun3 = matlabFunction(BAgency_fun3);
+
+BAgency_fun4 = fit_dBAgency4*zi.^(pol:-1:0)';
+BAgency_fun4 = matlabFunction(BAgency_fun4);
+
+% Step 5: compute central finite difference
+cross_lambda_omega = @(z) (BAgency_fun1(z) - BAgency_fun2(z) - BAgency_fun3(z) + BAgency_fun4(z)) / 4*h_omega*h_tau;
+
+figure('name', 'Numerical cross derivative')
+fplot(cross_lambda_omega, [0 1])
+
+% Try with makima to get derivative:
+xq = 0:0.0001:1;
+m_agencyB_1 = makima(sol_BAgency_1.x, sol_BAgency_1.y(2,:), xq);
+m_agencyB_2 = makima(sol_BAgency_2.x, sol_BAgency_2.y(2,:), xq);
+m_agencyB_3 = makima(sol_BAgency_3.x, sol_BAgency_3.y(2,:), xq);
+m_agencyB_4 = makima(sol_BAgency_4.x, sol_BAgency_4.y(2,:), xq);
+
+cross_tau_omega_agency = (m_agencyB_1 - m_agencyB_2 - m_agencyB_3 + m_agencyB_4) / 4*h_omega*h_tau;
+
+figure('name', '(MAKIMA) Numerical cross derivative tau omega agency')
+plot(xq,cross_tau_omega_agency)
+title('Numerical Cross Derivative tau omega (agency)')
+saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_tau_omega_agency.eps'],'epsc')
+
+save('cross_derivative_tau_omega_agency.mat','cross_tau_omega_agency')
+
+% Comparison tau omega cross derivatives
+load('cross_derivative_tau_omega_agency')
+load('cross_derivative_tau_omega_fb')
+
+figure; 
+plot(xq,cross_tau_omega_fb)
+hold on
+plot(xq,cross_tau_omega_agency)
+title('Comparison Cross Derivatives Tau Omega')
+legend('First Best', 'Moral Hazard')
+grid on
+
+% Compute Numerical Cross Derivative Lambda Omega Agency Friction Model
 
 parameters;
 % Step 1: define step sizes
@@ -633,10 +772,10 @@ h_omega = omega*0.5; % change in omega
 type = 'scaled'; % scaled: g(z,a)
 
 % Filling in the formula for finite difference (see notes)
-[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega+h_omega,gamma,type);
-[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega+h_omega,gamma,type);
-[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h_lambda,omega-h_omega,gamma,type);
-[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda-h_lambda,omega-h_omega,gamma,type);
+[~, sol_BAgency_1] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega+h_omega,gamma,type);
+[~, sol_BAgency_2] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega+h_omega,gamma,type);
+[~, sol_BAgency_3] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h_lambda,omega-h_omega,gamma,type);
+[~, sol_BAgency_4] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda-h_lambda,omega-h_omega,gamma,type);
 
 % Step 3: fit the derivative to obtain a comparable 'function'
 pol = 17;
@@ -693,7 +832,43 @@ title('Comparison Cross Derivatives')
 legend('First Best', 'Moral Hazard')
 grid on
 
-%% Higher accuracy Cross derivative
+%% Comparison Derivatives Omega
+load('derivative_omega_agency')
+load('derivative_omega_fb')
+
+figure; 
+plot(xq,derivative_omega_fb)
+hold on
+plot(xq,derivative_omega_agency)
+title('Comparison Derivative Omega')
+legend('First Best', 'Moral Hazard')
+grid on
+
+%% Comparison Derivatives Lambda
+load('derivative_lambda_agency')
+load('derivative_lambda_fb')
+
+figure; 
+plot(xq,derivative_lambda_fb)
+hold on
+plot(xq,derivative_lambda_agency)
+title('Comparison Derivative Lambda')
+legend('First Best', 'Moral Hazard')
+grid on
+
+%% Comparison Derivatives Tau
+load('derivative_tau_agency')
+load('derivative_tau_fb')
+
+figure; 
+plot(xq,derivative_tau_fb)
+hold on
+plot(xq,derivative_tau_agency)
+title('Comparison Derivative Tau')
+legend('First Best', 'Moral Hazard')
+grid on
+
+%% Higher accuracy Cross derivative 
 parameters;
 % define step sizes
 h_lambda = 0.01; % change in lambda
@@ -710,29 +885,29 @@ type = 'scaled'; % scaled: g(z,a)
 
 
 % positive
-f11 = fii(1,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-f12 = fii(1,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-f21 = fii(2,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-f22 = fii(2,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f11 = fii(1,1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+f12 = fii(1,2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+f21 = fii(2,1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+f22 = fii(2,2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
 % negative (m)
-fm1m1 = fii(-1,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm1m2 = fii(-1,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm2m1 = fii(-2,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm2m2 = fii(-2,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm1m1 = fii(-1,-1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm1m2 = fii(-1,-2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm2m1 = fii(-2,-1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm2m2 = fii(-2,-2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
 % positive and negative:
-f1m1 = fii(1,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm11 = fii(-1,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f1m1 = fii(1,-1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm11 = fii(-1,1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
-fm21 = fii(-2,1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-f1m2 = fii(1,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+fm21 = fii(-2,1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+f1m2 = fii(1,-2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
-f2m1 = fii(2,-1, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm12 = fii(-1,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f2m1 = fii(2,-1, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm12 = fii(-1,2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
-f2m2 = fii(2,-2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
-fm22 = fii(-2,2, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type);
+f2m2 = fii(2,-2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+fm22 = fii(-2,2, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
 
 %%%%%%%%%%
 
@@ -771,6 +946,28 @@ title('Agency Cross')
 saveas(gca,[pwd '/figures/agency_derivatives/makima_cross_agency_fourth_order.eps'],'epsc')
 
 
+
+%% Comparison fb and agency firm value
+parameters;
+type='scaled';
+
+[sol_AShock, sol_BShock] = solve_ODE_SAR_FB(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,type);
+[sol_A_Agency, sol_B_Agency] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type);
+
+figure;
+plot(sol_BShock.x, sol_BShock.y(1,:))
+hold on
+plot(sol_B_Agency.x, sol_B_Agency.y(1,:))
+legend('First Best', 'Moral Hazard')
+title('before')
+
+figure;
+plot(sol_AShock.x, sol_AShock.y(1,:))
+hold on
+plot(sol_A_Agency.x, sol_A_Agency.y(1,:))
+legend('First Best', 'Moral Hazard')
+title('after')
+
 %% Some basic functions
 
 function y = obtain_a(sol_y_prime,a_bar)
@@ -783,6 +980,6 @@ function y = obtain_a(sol_y_prime,a_bar)
 end
 
 
-function sol_ii = fii(k_l, k_o, h, r,mu_B,mu_G,sigma,a_bar,lambda,omega,gamma,type)
-    [~, sol_ii] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,sigma,a_bar,lambda+h*k_l,omega+h*k_o,gamma,type);
+function sol_ii = fii(k_l, k_o, h, r,mu_B,mu_G,tau,sigma,a_bar,lambda,omega,gamma,type)
+    [~, sol_ii] = solve_ODE_SAR_AGENCY(r,mu_B,mu_G,tau,sigma,a_bar,lambda+h*k_l,omega+h*k_o,gamma,type);
 end
