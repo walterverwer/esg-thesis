@@ -28,15 +28,13 @@ modelSolutions = {};
 modelDerivatives = {};
 modelCrossDerivatives = {};
 
-L = length(paramsDerivatives);
-
 % solve model, derivatives and cross derivatives for effort
 parfor i=1:length(types)
     model = transitionModel( types(i), parameters );
     [sol_A, sol_B] = model.solve;
     modelSolutions{i} = model;
     
-    for j=1:L
+    for j=1:length(paramsDerivatives)
         % update waitbar
         multiwaitbar(2,[i j],{'Computing','Computing'},H);
 
@@ -44,6 +42,7 @@ parfor i=1:length(types)
             % compute single derivative of effort wrt parameter j
             model = transitionModel( types(i), parameters );
             var1 = paramsDerivatives(j); relativeStep1 = 0.1;
+            
             [derivativeAfterShock, derivativeBeforeShock] = ...
             model.derivative(var1, relativeStep1);
             

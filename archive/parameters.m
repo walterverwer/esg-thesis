@@ -1,0 +1,11 @@
+r = 0.05;          % discounting
+sigma = 0.25;     % volatility
+mu_G = 0.20;         % productivity of green capital
+mu_B = 0.30;          % productivity of brown capital
+gamma = 5;          % risk aversion coefficient
+theta = 15;          % constant scaling adjustment cost
+a_bar = 0.3;         % maximum value of effort to change z
+lambda = 0.02;      % Poisson intensity parameter
+omega = 0.02;           % green preference parameter of principal           
+tau = 0.30;          % tax on brown/ subsidy on green
+xi = 0.02;           % green preference parameter of agent
