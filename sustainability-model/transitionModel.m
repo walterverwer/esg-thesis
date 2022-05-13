@@ -17,7 +17,8 @@ classdef transitionModel < handle
 %             'omega',    0.02, ...       green preference parameter of principal
 %             'tau',      0.30, ...       tax on brown/ subsidy on green
 %             'xi',       0.02, ...       green preference parameter of agent
-%             'pol',      17)           % polinomial length
+%             'pol',      17, ...         polinomial length
+%             'phi'       0.05)          % manager's preference for doing green effort (on a)
        
         boundaryValues
         % ^--- boundaryValues.p_BA
@@ -41,7 +42,7 @@ classdef transitionModel < handle
             end
         end
         
-        function [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = getParams(obj)
+        function [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = getParams(obj)
             % getParams extracts the parameters from obj.parameters.
             r =         obj.parameters.r;
             sigma =     obj.parameters.sigma;
@@ -55,6 +56,7 @@ classdef transitionModel < handle
             tau =       obj.parameters.tau;
             xi =        obj.parameters.xi;
             pol =       obj.parameters.pol;
+            phi =       obj.parameters.phi;
         end
 
 
@@ -115,7 +117,7 @@ classdef transitionModel < handle
             %   y(1) := j(z) and y(2) := j'(z)
 
             % get parameters
-            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
             
             % get taylor expression
             expr = obj.taylorExpression;
@@ -145,7 +147,7 @@ classdef transitionModel < handle
             elseif obj.type=="agency"
 
                 % calculate optimal control effort
-                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * dV;
+                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) );
 
                 % bound a to [-a_bar, a_bar]
                 if abs( a ) > a_bar
@@ -155,10 +157,10 @@ classdef transitionModel < handle
                 % ode after a shock
 
                 ddV = expr( z ) * ( ...
-                        r * V + theta * ( a^2 * z * (1-z) )/2 ...
-                        - mu_G * z - ( mu_B - tau ) * (1-z) - omega * z ...
+                        r * V + theta * ( a^2 * z * (1-z) )/2 - phi * a * z * (1-z) ...
+                        - mu_G * z - ( mu_B - tau ) * (1-z) - omega * z - xi * z ...
                         - dV *a * z * (1-z) ...
-                        + ( gamma*r ) / 2 * ( theta^2 * a^2 * z^2 * (1-z)^2 *sigma^2 ) ...
+                        + ( gamma*r ) / 2 * ( (theta * a - phi)^2 * z^2 * (1-z)^2 *sigma^2 ) ...
                         );
             end
             
@@ -173,7 +175,7 @@ classdef transitionModel < handle
             %   write the second order ODE as a system of first-order equations. Define
 
             % get parameters
-            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
             
             % get taylor expression
             expr = obj.taylorExpression;
@@ -197,27 +199,28 @@ classdef transitionModel < handle
     
                 ddV = expr(z) * ( ...
                         ( r + lambda ) * V + theta * ( a^2 * z * (1-z) )/2 ...
-                        - mu_G * z - mu_B * (1-z) - omega * z ...
+                        - mu_G * z - mu_B * (1-z) - omega * z  ...
                         - lambda * obj.AShock_fun(z) - dV * a * z * (1-z) ...
                         );
             
             % ode for agency friction case
             elseif obj.type=="agency"
 
-                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * dV;
+                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) );
+
 
                 % bound a to [-a_bar, a_bar]
                 if abs( a ) > a_bar
                     a = sign( a ) * a_bar;
                 end
                 
-                % ode after a shock
+                % ode before a shock
 
                 ddV = expr(z) * ( ...
-                        ( r + lambda ) * V + theta * ( a^2*z*(1-z) ) / 2 ...
-                        - mu_G * z - mu_B * (1-z) - omega * z ...
+                        ( r + lambda ) * V + theta * ( a^2*z*(1-z) ) / 2 - phi * a * z * (1-z) ...
+                        - mu_G * z - mu_B * (1-z) - omega * z - xi * z...
                         - lambda * obj.AShock_fun(z) - dV * a * z * (1-z) ...
-                        + ( gamma * r ) / 2 * ( theta^2 * a^2 * z^2 * (1-z)^2 * sigma^2) ...
+                        + ( gamma * r ) / 2 * ( (theta * a - phi)^2 * z^2 * (1-z)^2 * sigma^2) ...
                         );
             end
 
@@ -229,11 +232,18 @@ classdef transitionModel < handle
 
         function [ solAfterShock, solBeforeShock ] = solve(obj)
                 % get parameters
-                [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+                [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
                 
-                % get boundary values
-                p_BA = ( mu_B - tau ) / r;
-                p_GA = ( mu_G + omega ) / r;
+                % get boundary values after shock
+                if obj.type == "firstBest"
+                    p_BA = ( mu_B - tau ) / r;
+                    p_GA = ( mu_G + omega ) / r;
+
+                elseif obj.type == "agency"
+                    p_BA = ( mu_B - tau ) / r;
+                    p_GA = ( mu_G + omega + xi ) / r;
+
+                end
 
                 % store boundary values to properties
                 obj.boundaryValues.p_BA = p_BA;
@@ -279,8 +289,17 @@ classdef transitionModel < handle
 
 
                 % solve the model before the shock, using the polyfit after the shock
-                p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
-                p_GB = ( mu_G + omega + lambda * p_GA ) / ( r + lambda );
+
+                % obtain boundary values before the shock
+                if obj.type == "firstBest"
+                    p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
+                    p_GB = ( mu_G + omega + lambda * p_GA ) / ( r + lambda );
+
+                elseif obj.type == "agency"
+                    p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
+                    p_GB = ( mu_G + omega + xi + lambda * p_GA ) / ( r + lambda );
+
+                end
 
                 % store boundary values to properties
                 obj.boundaryValues.p_BB = p_BB;
@@ -306,7 +325,7 @@ classdef transitionModel < handle
 
         function [aAfterShock, aBeforeShock] = getEffort(obj)
             % get parameters
-            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
 
             % effort for first best
             if obj.type == "firstBest"
@@ -315,8 +334,9 @@ classdef transitionModel < handle
             
             % effort for agency
             elseif obj.type == "agency"
-                aAfterShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 * obj.sol_AShock.x .* (1-obj.sol_AShock.x) ) .* obj.sol_AShock.y(2,:);
-                aBeforeShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 * obj.sol_BShock.x .* (1-obj.sol_BShock.x) ) .* obj.sol_BShock.y(2,:);
+                aAfterShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) ) .* ( obj.sol_AShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) );
+
+                aBeforeShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) ) .* ( obj.sol_BShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) );
             end
 
             
@@ -324,7 +344,7 @@ classdef transitionModel < handle
 
         function [crossDerivativeAfterShock, crossDerivativeBeforeShock] = crossDerivative(obj, var1, var2, relativeStep1, relativeStep2)
             % get parameters
-            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
             
             % define stepsize
             switch var1
@@ -350,6 +370,8 @@ classdef transitionModel < handle
                     stepVar1 = tau * relativeStep1;
                 case "xi"
                     stepVar1 = xi * relativeStep1;
+                case "phi"
+                    stepVar1 = phi * relativeStep1;
             end
 
             switch var2
@@ -375,6 +397,8 @@ classdef transitionModel < handle
                     stepVar2 = tau * relativeStep2;
                 case "xi"
                     stepVar2 = xi * relativeStep2;
+                case "phi"
+                    stepVar2 = phi * relativeStep2;
             end
 
             situations = [  stepVar1, stepVar2;
@@ -410,6 +434,8 @@ classdef transitionModel < handle
                         obj.parameters.tau = tau + situations(i,1);
                     case "xi"
                         obj.parameters.xi = xi + situations(i,1);
+                    case "phi"
+                        obj.parameters.phi = phi + situations(i,1);
                 end
 
                 switch var2
@@ -435,6 +461,8 @@ classdef transitionModel < handle
                         obj.parameters.tau = tau + situations(i,2);
                     case "xi"
                         obj.parameters.xi = xi + situations(i,2);
+                    case "phi"
+                        obj.parameters.phi = phi + situations(i,2);
                 end
                 [ solAfterShock, solBeforeShock ] = obj.solve;    
 
@@ -456,6 +484,7 @@ classdef transitionModel < handle
                 obj.parameters.omega = omega;
                 obj.parameters.tau = tau;
                 obj.parameters.xi = xi;
+                obj.parameters.phi = phi;
             end
             crossDerivativeAfterShock = ...
             (   solutionsAfterShock(:,1) ...
@@ -475,7 +504,7 @@ classdef transitionModel < handle
 
         function [derivativeAfterShock, derivativeBeforeShock] = derivative(obj, var1, relativeStep1)
             % get parameters
-            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol] = obj.getParams;
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
             
             % define stepsize
             switch var1
@@ -501,6 +530,8 @@ classdef transitionModel < handle
                     stepVar1 = tau * relativeStep1;
                 case "xi"
                     stepVar1 = xi * relativeStep1;
+                case "phi"
+                    stepVar1 = phi * relativeStep1;
             end
 
             situations = [  2*stepVar1;
@@ -536,6 +567,8 @@ classdef transitionModel < handle
                         obj.parameters.tau = tau + situations(i,1);
                     case "xi"
                         obj.parameters.xi = xi + situations(i,1);
+                    case "phi"
+                        obj.parameters.phi = phi + situations(i,1);
                 end
 
                 [ solAfterShock, solBeforeShock ] = obj.solve;   
@@ -558,6 +591,7 @@ classdef transitionModel < handle
                 obj.parameters.omega = omega;
                 obj.parameters.tau = tau;
                 obj.parameters.xi = xi;
+                obj.parameters.phi = phi;
             end
 
             derivativeAfterShock = ...

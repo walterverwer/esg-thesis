@@ -1,27 +1,57 @@
+%% Environmental Transition Model Solver
+
 tic
 
 % parameters
 parameters.r        = 0.05;         % discounting
 parameters.sigma    = 0.25;         % volatility
-parameters.mu_G     = 0.10;         % productivity of green capital
-parameters.mu_B     = 0.20;         % productivity of brown capital
+parameters.mu_G     = 0.15;         % productivity of green capital
+parameters.mu_B     = 0.30;         % productivity of brown capital
 parameters.gamma    = 5;            % risk aversion coefficient
-parameters.theta    = 10;           % constant scaling adjustment cost
+parameters.theta    = 20;           % constant scaling adjustment cost
 parameters.a_bar    = 0.4;          % maximum value of effort to change z
-parameters.lambda   = 0.015;        % poisson intensity parameter
-parameters.omega    = 0.010;        % green preference parameter of principal           
-parameters.tau      = 0.20;         % tax on brown/ subsidy on green
-parameters.xi       = 0.02;         % green preference parameter of agent
+parameters.lambda   = 0.025;        % poisson intensity parameter
+parameters.omega    = 0.025;        % green preference parameter of principal           
+parameters.tau      = 0.30;         % tax on brown/ subsidy on green
+parameters.xi       = 0.01;         % green preference parameter of agent (on z)
 parameters.pol      = 17;           % polinomial length
+parameters.phi      = 0.01;         % manager's preference for doing green effort (on a)
+    
 
-% construct waitbar
-H = multiwaitbar(2,[0 0],{'Types Progress','Derivatives Progress'});
+types = ["firstBest","agency"];
+modelSolutions = {};
 
+parfor i = 1:length(types)
+    model = transitionModel( types(i), parameters );
+    [sol_A, sol_B] = model.solve;
+    modelSolutions{i} = model;
+end
+
+figure;
+plot(modelSolutions{1}.sol_BShock.x, modelSolutions{1}.sol_BShock.y(1,:))
+hold on
+plot(modelSolutions{2}.sol_BShock.x, modelSolutions{2}.sol_BShock.y(1,:))
+
+figure;
+plot(modelSolutions{1}.sol_AShock.x, modelSolutions{1}.sol_AShock.y(1,:))
+hold on
+plot(modelSolutions{2}.sol_AShock.x, modelSolutions{2}.sol_AShock.y(1,:))
+
+figure;
+plot(modelSolutions{1}.sol_BShock.x, modelSolutions{1}.effort.aBeforeShock)
+hold on
+plot(modelSolutions{2}.sol_BShock.x, modelSolutions{2}.effort.aBeforeShock)
+
+figure;
+plot(modelSolutions{1}.sol_AShock.x, modelSolutions{1}.effort.aAfterShock)
+hold on
+plot(modelSolutions{2}.sol_AShock.x, modelSolutions{2}.effort.aAfterShock)
+%%
 % model types
 types = ["firstBest", "agency"];
 
 % parameters for derivatives
-paramsDerivatives = ["lambda", "tau", "omega"];
+paramsDerivatives = ["lambda", "tau", "xi", "phi", "omega"];
 
 % solution cells
 modelSolutions = {};
@@ -36,27 +66,25 @@ parfor i=1:length(types)
     [sol_A, sol_B] = model.solve;
     modelSolutions{i} = model;
     
-    for j=1:L
-        % update waitbar
-        multiwaitbar(2,[i j],{'Computing','Computing'},H);
+    for j=1:L        
+        % compute single derivative of effort wrt parameter j
+        model = transitionModel( types(i), parameters );
+        var1 = paramsDerivatives(j); relativeStep1 = 0.1;
 
+        [derivativeAfterShock, derivativeBeforeShock] = ...
+        model.derivative(var1, relativeStep1);
         
-            % compute single derivative of effort wrt parameter j
-            model = transitionModel( types(i), parameters );
-            var1 = paramsDerivatives(j); relativeStep1 = 0.1;
-            [derivativeAfterShock, derivativeBeforeShock] = ...
-            model.derivative(var1, relativeStep1);
-            
-            % write single derivative to solution cell
-            modelDerivatives{i,j} = [derivativeAfterShock, derivativeBeforeShock];
+        % write single derivative to solution cell
+        modelDerivatives{i,j} = [derivativeAfterShock, derivativeBeforeShock];
 
         if paramsDerivatives(j) ~= "omega"
             % compute cross derivative of effort wrt parameters j (not omega) and omega
             model = transitionModel( types(i), parameters );
             var1 = paramsDerivatives(j); relativeStep1 = 0.1;
             var2 = "omega"; relativeStep2 = 0.1;
+
             [crossDerivativeAfterShock, crossDerivativeBeforeShock] = ...
-                model.crossDerivative(var1, var2, relativeStep1, relativeStep2);
+            model.crossDerivative(var1, var2, relativeStep1, relativeStep2);
     
             % write cross derivative to solution cell
             modelCrossDerivatives{i,j} = [crossDerivativeAfterShock, crossDerivativeBeforeShock];
@@ -64,15 +92,22 @@ parfor i=1:length(types)
     end
 end
 
-% close waitbar
-delete(H.figure)
-clear('H')
+%%
+
+% write results to structure
+results = struct;
+results.solutions = modelSolutions;
+results.derivatives = modelDerivatives;
+results.crossDerivatives = modelCrossDerivatives;
 
 % save workspace
 save('results.mat')
 
 toc
+
+
 %% Plot all results
+load('results.mat')
 
 % firm value plots
 figure;
@@ -82,14 +117,38 @@ plot(modelSolutions{2}.sol_BShock.x, modelSolutions{2}.sol_BShock.y(1,:))
 title('Firm Value Before Shock', 'interpreter','latex')
 grid on
 legend('First Best', 'Moral Hazard')
-saveas(gca,[pwd '/results/firmValue.eps'],'epsc')
+saveas(gca,[pwd '/results/firmValueBefore.eps'],'epsc')
 
-% firm value derivatives
+figure;
+plot(modelSolutions{1}.sol_AShock.x, modelSolutions{1}.sol_AShock.y(1,:))
+hold on
+plot(modelSolutions{2}.sol_AShock.x, modelSolutions{2}.sol_AShock.y(1,:))
+title('Firm Value After Shock', 'interpreter','latex')
+grid on
+legend('First Best', 'Moral Hazard')
+saveas(gca,[pwd '/results/firmValueAfter.eps'],'epsc')
+
+% effort
 figure;
 plot(modelSolutions{1}.sol_BShock.x, modelSolutions{1}.sol_BShock.y(2,:))
 hold on
 plot(modelSolutions{2}.sol_BShock.x, modelSolutions{2}.sol_BShock.y(2,:))
-title('Firm Value Before Shock', 'interpreter','latex')
+title('Effort Before Shock', 'interpreter','latex')
 grid on
 legend('First Best', 'Moral Hazard')
-saveas(gca,[pwd '/results/firmValueDerivative.eps'],'epsc')
+saveas(gca,[pwd '/results/effortBefore.eps'],'epsc')
+
+figure;
+plot(modelSolutions{1}.sol_AShock.x, modelSolutions{1}.sol_AShock.y(2,:))
+hold on
+plot(modelSolutions{2}.sol_AShock.x, modelSolutions{2}.sol_AShock.y(2,:))
+title('Effort After Shock', 'interpreter','latex')
+grid on
+legend('First Best', 'Moral Hazard')
+saveas(gca,[pwd '/results/effortAfter.eps'],'epsc')
+
+
+
+
+
+
