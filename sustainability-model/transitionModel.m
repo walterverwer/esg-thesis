@@ -1,6 +1,4 @@
 classdef transitionModel < handle
-    %TRANSITIONMODEL Summary of this class goes here
-    %   Detailed explanation goes here
     
     properties
         type % 'firstBest', 'agency'
@@ -8,17 +6,17 @@ classdef transitionModel < handle
 %         parameters = struct( ...
 %             'r',        0.05, ...       discounting
 %             'sigma',    0.25, ...       volatility
-%             'mu_G',     0.20, ...       productivity of green capital
+%             'mu_G',     0.15, ...       productivity of green capital
 %             'mu_B',     0.30, ...       productivity of brown capital
 %             'gamma',    5, ...          risk aversion coefficient
-%             'theta',    10, ...         constant scaling adjustment cost
-%             'a_bar',    0.3, ...        maximum value of effort to change z
-%             'lambda',   0.02, ...       Poisson intensity parameter
-%             'omega',    0.02, ...       green preference parameter of principal
+%             'theta',    20, ...         constant scaling adjustment cost
+%             'a_bar',    0.4, ...        maximum value of effort to change z
+%             'lambda',   0.025, ...       Poisson intensity parameter
+%             'omega',    0.025, ...       green preference parameter of principal
 %             'tau',      0.30, ...       tax on brown/ subsidy on green
-%             'xi',       0.02, ...       green preference parameter of agent
+%             'xi',       0.01, ...       green preference parameter of agent
 %             'pol',      17, ...         polinomial length
-%             'phi'       0.05)          % manager's preference for doing green effort (on a)
+%             'phi'       0.01)          % manager's preference for doing green effort (on a)
        
         boundaryValues
         % ^--- boundaryValues.p_BA
@@ -147,7 +145,7 @@ classdef transitionModel < handle
             elseif obj.type=="agency"
 
                 % calculate optimal control effort
-                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) );
+                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) * phi );
 
                 % bound a to [-a_bar, a_bar]
                 if abs( a ) > a_bar
@@ -206,7 +204,7 @@ classdef transitionModel < handle
             % ode for agency friction case
             elseif obj.type=="agency"
 
-                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) );
+                a = 1 / ( theta + theta^2 * gamma * r * sigma^2 * z * (1-z) ) * ( dV + phi + theta * gamma * r * sigma^2 * z * (1-z) * phi );
 
 
                 % bound a to [-a_bar, a_bar]
@@ -258,7 +256,7 @@ classdef transitionModel < handle
                             2 / ( sigma^2 * x^2 * ( 1 - x )^2 ), ...
                             x, ...
                             'ExpansionPoint',   0.5, ...
-                            'Order',    9 ...
+                            'Order',    25 ...
                         ) ...
                     );
 
@@ -334,11 +332,20 @@ classdef transitionModel < handle
             
             % effort for agency
             elseif obj.type == "agency"
-                aAfterShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) ) .* ( obj.sol_AShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) );
+                aAfterShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) ) .* ( obj.sol_AShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_AShock.x .* (1-obj.sol_AShock.x) * phi );
 
-                aBeforeShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) ) .* ( obj.sol_BShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) );
+                aBeforeShock = 1 ./ ( theta + theta^2 * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) ) .* ( obj.sol_BShock.y(2,:) + phi + theta * gamma * r * sigma^2 .* obj.sol_BShock.x .* (1-obj.sol_BShock.x) * phi );
             end
+        
+            % bound effort between -a_bar and a_bar
+            aMaxAfter = repelem(a_bar, length(aAfterShock));
+            aMaxBefore = repelem(a_bar, length(aBeforeShock));
 
+            aMinAfter = repelem(-a_bar, length(aAfterShock));
+            aMinBefore = repelem(-a_bar, length(aBeforeShock));
+
+            aAfterShock = MinMaxCheck(aMinAfter, aMaxAfter, aAfterShock);
+            aBeforeShock = MinMaxCheck(aMinBefore, aMaxBefore, aBeforeShock);
             
         end
 
