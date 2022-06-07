@@ -73,8 +73,8 @@ classdef transitionModel < handle
             residuals = [   Va - p_B       % @ z = 0, p_BA = Va
                             Vb - p_G ];    % @ z = 1, p_GA = Vb
         end
-
-
+        
+        
         function y = guessAShock(obj, z, y0_hat)
             % when z=0, then y = y0_hat
             if z==0
@@ -110,9 +110,8 @@ classdef transitionModel < handle
 
 
         function dy = odeAShock(obj, z, y)
-            %   ode function to solve for j_s(z)
+            %   ode function to solve for V(z)
             %   write the second order ODE as a system of first-order equations. Define
-            %   y(1) := j(z) and y(2) := j'(z)
 
             % get parameters
             [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
@@ -138,7 +137,8 @@ classdef transitionModel < handle
             
                 ddV = expr( z ) * ( ...
                         r * V + theta * ( a^2 * z * (1-z) ) / 2 ...
-                        - mu_G * z - ( mu_B - tau ) * (1-z) - omega * z - dV * a * z * (1-z) ...
+                        - mu_G * z - ( mu_B - tau ) * (1-z) - omega * z ...
+                        - xi*z - dV * a * z * (1-z) ...
                         );
             
             % ode for agency friction case
@@ -197,7 +197,7 @@ classdef transitionModel < handle
     
                 ddV = expr(z) * ( ...
                         ( r + lambda ) * V + theta * ( a^2 * z * (1-z) )/2 ...
-                        - mu_G * z - mu_B * (1-z) - omega * z  ...
+                        - mu_G * z - mu_B * (1-z) - omega * z - xi*z ...
                         - lambda * obj.AShock_fun(z) - dV * a * z * (1-z) ...
                         );
             
@@ -233,22 +233,16 @@ classdef transitionModel < handle
                 [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
                 
                 % get boundary values after shock
-                if obj.type == "firstBest"
-                    p_BA = ( mu_B - tau ) / r;
-                    p_GA = ( mu_G + omega ) / r;
 
-                elseif obj.type == "agency"
-                    p_BA = ( mu_B - tau ) / r;
-                    p_GA = ( mu_G + omega + xi ) / r;
-
-                end
+                p_BA = ( mu_B - tau ) / r;
+                p_GA = ( mu_G + omega + xi ) / r;
 
                 % store boundary values to properties
                 obj.boundaryValues.p_BA = p_BA;
                 obj.boundaryValues.p_GA = p_GA;
                 
                 % create taylor expression for z in {0, 1} for
-                % singularities
+                % singularities      
                 % define a symbolic variable for z --> x
                 syms x
                 obj.taylorExpression = matlabFunction(...
@@ -270,7 +264,7 @@ classdef transitionModel < handle
                 % get solution for initial guess
                 solinit = bvpinit(xmesh, @(z) obj.guessAShock(z,y0_hat));
                 
-                bvpoptions = bvpset( Stats="on", Nmax=150000, AbsTol=1e-4, RelTol=1e-4);
+                bvpoptions = bvpset( Stats="on", Nmax=150000, AbsTol=1e-8, RelTol=1e-8);
                 solAfterShock = bvp5c(...
                                 @(z,y) obj.odeAShock(z,y),...
                                 @(ya, yb) obj.bc(ya, yb, p_BA, p_GA),...
@@ -289,15 +283,9 @@ classdef transitionModel < handle
                 % solve the model before the shock, using the polyfit after the shock
 
                 % obtain boundary values before the shock
-                if obj.type == "firstBest"
-                    p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
-                    p_GB = ( mu_G + omega + lambda * p_GA ) / ( r + lambda );
 
-                elseif obj.type == "agency"
-                    p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
-                    p_GB = ( mu_G + omega + xi + lambda * p_GA ) / ( r + lambda );
-
-                end
+                p_BB = ( mu_B + lambda * p_BA ) / ( lambda + r );
+                p_GB = ( mu_G + omega + xi + lambda * p_GA ) / ( r + lambda );
 
                 % store boundary values to properties
                 obj.boundaryValues.p_BB = p_BB;
@@ -307,7 +295,7 @@ classdef transitionModel < handle
                 y0_hat = [p_BB;0]; % start is known, V' is unknown. If code gives error, vary the derivative.
                 solinit = bvpinit(xmesh, @(z) obj.guessBShock(z,y0_hat));
                 
-                bvpoptions = bvpset(Stats="on",Nmax=150000,AbsTol=1e-4,RelTol=1e-4);
+                bvpoptions = bvpset(Stats="on",Nmax=150000,AbsTol=1e-8,RelTol=1e-8);
                 solBeforeShock = bvp5c( @(z,y) obj.odeBShock(z,y), ...
                                     @(ya,yb) obj.bc(ya, yb, p_BB, p_GB), ...
                                     solinit, ...
@@ -315,7 +303,7 @@ classdef transitionModel < handle
                 obj.sol_BShock = solBeforeShock;
 
                 % store effort before and after shock
-                [aAfterShock, aBeforeShock] = getEffort(obj);
+                [aAfterShock, aBeforeShock] = obj.getEffort;
                 obj.effort.aAfterShock = aAfterShock;
                 obj.effort.aBeforeShock = aBeforeShock;
         end
@@ -474,7 +462,7 @@ classdef transitionModel < handle
                 [ solAfterShock, solBeforeShock ] = obj.solve;    
 
                 % obtain effort
-                [aAfterShock, aBeforeShock] = getEffort(obj);
+                [aAfterShock, aBeforeShock] = obj.getEffort;
                 
                 % apply makima to obtain fit of solution
                 solutionsAfterShock(:,i) = makima(solAfterShock.x, aAfterShock, xq);
@@ -509,7 +497,7 @@ classdef transitionModel < handle
         end
 
 
-        function [derivativeAfterShock, derivativeBeforeShock] = derivative(obj, var1, relativeStep1)
+        function [derivativeAfterShock, derivativeBeforeShock] = derivative(obj, var1, relativeStep1, derivativeType)
             % get parameters
             [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
             
@@ -579,14 +567,22 @@ classdef transitionModel < handle
                 end
 
                 [ solAfterShock, solBeforeShock ] = obj.solve;   
-
-                % obtain effort
-                [aAfterShock, aBeforeShock] = getEffort(obj);
                 
-                % apply makima to obtain fit of solution
-                solutionsAfterShock(:,i) = makima(solAfterShock.x, aAfterShock, xq);
-                solutionsBeforeShock(:,i) = makima(solBeforeShock.x, aBeforeShock, xq);
+                % make distinction derivative effort and firm value
+                if derivativeType == "effort"
+                    % obtain effort
+                    [aAfterShock, aBeforeShock] = obj.getEffort;
 
+                    % apply makima to obtain fit of solution
+                    solutionsAfterShock(:,i) = makima(solAfterShock.x, aAfterShock, xq);
+                    solutionsBeforeShock(:,i) = makima(solBeforeShock.x, aBeforeShock, xq);
+
+                elseif derivativeType == "firmValue"
+                    solutionsAfterShock(:,i) = makima(solAfterShock.x, solAfterShock.y(1,:), xq);
+                    solutionsBeforeShock(:,i) = makima(solBeforeShock.x, solBeforeShock.y(1,:), xq);
+                
+                end
+    
                 obj.parameters.r = r;
                 obj.parameters.sigma = sigma;
                 obj.parameters.mu_G = mu_G;
@@ -616,6 +612,117 @@ classdef transitionModel < handle
             / ( 12 * stepVar1  );
 
         end
+
+        function [secondDerivativeAfterShock, secondDerivativeBeforeShock] = secondDerivative(obj, var1, relativeStep1)
+            % get parameters
+            [r, sigma, mu_G, mu_B, gamma, theta, a_bar, lambda, omega, tau, xi, pol, phi] = obj.getParams;
+            
+            % define stepsize
+            switch var1
+                case "r"
+                    stepVar1 = r * relativeStep1;
+                case "sigma"
+                    stepVar1 = sigma * relativeStep1;
+                case "mu_G"
+                    stepVar1 = mu_G * relativeStep1;
+                case "mu_B"
+                    stepVar1 = mu_B * relativeStep1;
+                case "gamma"
+                    stepVar1 = gamma * relativeStep1;
+                case "theta"
+                    stepVar1 = theta * relativeStep1;
+                case "a_bar"
+                    stepVar1 = a_bar * relativeStep1;
+                case "lambda"
+                    stepVar1 = lambda * relativeStep1;
+                case "omega"
+                    stepVar1 = omega * relativeStep1;
+                case "tau"
+                    stepVar1 = tau * relativeStep1;
+                case "xi"
+                    stepVar1 = xi * relativeStep1;
+                case "phi"
+                    stepVar1 = phi * relativeStep1;
+            end
+
+            situations = [  2*stepVar1;
+                            stepVar1;
+                            0;
+                            -stepVar1;
+                            -2*stepVar1];
+
+            xq = linspace(0,1,10000);
+            solutionsAfterShock = zeros(length(xq),size(situations,1));
+            solutionsBeforeShock = zeros(length(xq),size(situations,1));
+
+            for i=1:size(situations,1)
+                switch var1
+                    case "r"
+                        obj.parameters.r = r + situations(i,1);
+                    case "sigma"
+                        obj.parameters.sigma = sigma + situations(i,1);
+                    case "mu_G"
+                        obj.parameters.mu_G = mu_G + situations(i,1);
+                    case "mu_B"
+                        obj.parameters.mu_B = mu_B + situations(i,1);
+                    case "gamma"
+                        obj.parameters.gamma = gamma + situations(i,1);
+                    case "theta"
+                        obj.parameters.theta = theta + situations(i,1);
+                    case "a_bar"
+                        obj.parameters.a_bar = a_bar + situations(i,1);
+                    case "lambda"
+                        obj.parameters.lambda = lambda + situations(i,1);
+                    case "omega"
+                        obj.parameters.omega = omega + situations(i,1);
+                    case "tau"
+                        obj.parameters.tau = tau + situations(i,1);
+                    case "xi"
+                        obj.parameters.xi = xi + situations(i,1);
+                    case "phi"
+                        obj.parameters.phi = phi + situations(i,1);
+                end
+
+                [ solAfterShock, solBeforeShock ] = obj.solve;    
+
+                % obtain effort
+                [aAfterShock, aBeforeShock] = obj.getEffort;
+                
+                % apply makima to obtain fit of solution
+                solutionsAfterShock(:,i) = makima(solAfterShock.x, aAfterShock, xq);
+                solutionsBeforeShock(:,i) = makima(solBeforeShock.x, aBeforeShock, xq);
+
+                obj.parameters.r = r;
+                obj.parameters.sigma = sigma;
+                obj.parameters.mu_G = mu_G;
+                obj.parameters.mu_B = mu_B;
+                obj.parameters.gamma = gamma;
+                obj.parameters.theta = theta;
+                obj.parameters.a_bar = a_bar;
+                obj.parameters.lambda = lambda;
+                obj.parameters.omega = omega;
+                obj.parameters.tau = tau;
+                obj.parameters.xi = xi;
+                obj.parameters.phi = phi;
+            end
+            secondDerivativeAfterShock = ...
+            (   - solutionsAfterShock(:,1) ...
+                + 16 * solutionsAfterShock(:,2) ...
+                - 30 * solutionsAfterShock(:,3) ...
+                + 16 * solutionsAfterShock(:,4) ...
+                - solutionsAfterShock(:,5) ) ...
+            / ( 12 * stepVar1 * stepVar1 );
+
+            secondDerivativeBeforeShock = ...
+            (   - solutionsBeforeShock(:,1) ...
+                + 16 * solutionsBeforeShock(:,2) ...
+                - 30 * solutionsBeforeShock(:,3) ...
+                + 16 * solutionsBeforeShock(:,4) ...
+                - solutionsBeforeShock(:,5) ) ...
+            / ( 12 * stepVar1 * stepVar1 );
+        end
+
+
     end
 end
 
